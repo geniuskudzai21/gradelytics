@@ -1,0 +1,143 @@
+:root {
+  /* ── Brand palette ── */
+  --color-primary:    #1D6FE0;
+  --color-primary-rgb: 29, 111, 224;
+  --color-primary-hover: #1558B8;
+  --color-primary-muted: rgba(29, 111, 224, 0.10);
+  --color-primary-glow:  rgba(29, 111, 224, 0.25);
+
+  --color-growth:     #22A64C;
+  --color-growth-rgb: 34, 166, 76;
+  --color-growth-muted: rgba(34, 166, 76, 0.10);
+
+  --color-accent:     #14C9AE;
+  --color-accent-rgb: 20, 201, 174;
+  --color-accent-muted: rgba(20, 201, 174, 0.10);
+
+  --color-ink:        #14171A;
+  --color-ink-rgb:    20, 23, 26;
+
+  --color-gold:       #F0A83D;
+  --color-gold-rgb:   240, 168, 61;
+  --color-gold-muted: rgba(240, 168, 61, 0.10);
+
+  --color-surface:    #F7F9FA;
+  --color-surface-alt:#EFF1F3;
+
+  /* ── Semantic aliases ── */
+  --ink:            var(--color-ink);
+  --ink-rgb:        var(--color-ink-rgb);
+  --chrome-bg:      #FFFFFF;
+  --chrome-text:    var(--color-ink);
+  --chrome-border:  var(--border);
+  --primary:        var(--color-primary);
+  --primary-rgb:    var(--color-primary-rgb);
+  --primary-hover:  var(--color-primary-hover);
+  --primary-muted:  var(--color-primary-muted);
+  --primary-glow:   var(--color-primary-glow);
+  --teal:           var(--color-accent);
+  --teal-rgb:       var(--color-accent-rgb);
+  --teal-muted:     var(--color-accent-muted);
+  --surface:        var(--color-surface);
+  --surface-alt:    var(--color-surface-alt);
+  --gold:           var(--color-gold);
+  --gold-bg:        var(--color-gold-muted);
+  --silver:         #8B95A3;
+  --silver-bg:      rgba(139, 149, 163, 0.10);
+  --bronze:         #C07A20;
+  --bronze-bg:      rgba(192, 122, 32, 0.10);
+
+  /* ── Text ── */
+  --text:           #14171A;
+  --text-light:     #4B5563;
+  --muted:          #6B7280;
+  --border:         #E2E5EA;
+  --border-focus:   var(--color-primary);
+
+  /* ── Danger ── */
+  --danger:         #DC2626;
+  --danger-bg:      rgba(220, 38, 38, 0.10);
+
+  /* ── Typography ── */
+  --font-heading:   'Space Grotesk', sans-serif;
+  --font-body:      'Inter', sans-serif;
+
+  /* ── Spacing scale (8px base) ── */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* ── Radius ── */
+  --radius-xs:     4px;
+  --radius-sm:     6px;
+  --radius-md:     8px;
+  --radius-lg:     12px;
+  --radius-xl:     16px;
+  --radius-2xl:    20px;
+  --radius-pill:   999px;
+
+  /* ── Shadows (color-tinted) ── */
+  --shadow-xs:     0 1px 2px rgba(var(--color-ink-rgb), 0.04);
+  --shadow-sm:     0 1px 3px rgba(var(--color-ink-rgb), 0.06), 0 1px 2px rgba(var(--color-ink-rgb), 0.04);
+  --shadow-md:     0 4px 6px -1px rgba(var(--color-ink-rgb), 0.06), 0 2px 4px -2px rgba(var(--color-ink-rgb), 0.04);
+  --shadow-lg:     0 10px 15px -3px rgba(var(--color-ink-rgb), 0.06), 0 4px 6px -4px rgba(var(--color-ink-rgb), 0.04);
+  --shadow-xl:     0 20px 25px -5px rgba(var(--color-ink-rgb), 0.08), 0 8px 10px -6px rgba(var(--color-ink-rgb), 0.04);
+  --shadow-blue:   0 4px 14px -2px rgba(var(--color-primary-rgb), 0.30);
+  --shadow-blue-lg:0 8px 24px -4px rgba(var(--color-primary-rgb), 0.35);
+  --shadow-teal:   0 4px 14px -2px rgba(var(--color-accent-rgb), 0.30);
+
+  /* ── Transitions ── */
+  --ease-out:      cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Dark Theme
+   ═══════════════════════════════════════════════════════ */
+[data-theme="dark"] {
+  --color-surface:    #1A1D21;
+  --color-surface-alt:#14171A;
+
+  --ink:              #E2E5EA;
+  --surface:          #1A1D21;
+  --surface-alt:      #14171A;
+
+  --chrome-bg:        #14171A;
+  --chrome-text:      #E2E5EA;
+  --chrome-border:    rgba(255,255,255,0.08);
+
+  --text:             #E2E5EA;
+  --text-light:       #9CA3AF;
+  --muted:            #6B7280;
+  --border:           rgba(255,255,255,0.08);
+
+  --color-primary-muted: rgba(29, 111, 224, 0.15);
+  --color-growth-muted:  rgba(34, 166, 76, 0.15);
+  --color-accent-muted:  rgba(20, 201, 174, 0.15);
+  --color-gold-muted:    rgba(240, 168, 61, 0.15);
+
+  --primary-muted:    rgba(29, 111, 224, 0.15);
+  --gold-bg:          rgba(240, 168, 61, 0.15);
+  --silver-bg:        rgba(139, 149, 163, 0.15);
+  --bronze-bg:        rgba(192, 122, 32, 0.15);
+
+  --danger-bg:        rgba(220, 38, 38, 0.15);
+
+  --shadow-xs:     0 1px 2px rgba(0,0,0,0.2);
+  --shadow-sm:     0 1px 3px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md:     0 4px 6px -1px rgba(0,0,0,0.3), 0 2px 4px -2px rgba(0,0,0,0.2);
+  --shadow-lg:     0 10px 15px -3px rgba(0,0,0,0.3), 0 4px 6px -4px rgba(0,0,0,0.2);
+  --shadow-xl:     0 20px 25px -5px rgba(0,0,0,0.35), 0 8px 10px -6px rgba(0,0,0,0.2);
+  --shadow-blue:   0 4px 14px -2px rgba(var(--color-primary-rgb), 0.35);
+  --shadow-blue-lg:0 8px 24px -4px rgba(var(--color-primary-rgb), 0.4);
+  --shadow-teal:   0 4px 14px -2px rgba(var(--color-accent-rgb), 0.35);
+}

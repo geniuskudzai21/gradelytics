@@ -1,0 +1,286 @@
+/* ═══════════════════════════════════════════════════════
+   Gradelytics  –  Responsive Overrides
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Tablet (≤ 1024px) ── */
+@media (max-width: 1024px) {
+    .kpi-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .input-card {
+        padding: var(--sp-4);
+    }
+}
+
+/* ── Mobile (≤ 768px) ── */
+@media (max-width: 768px) {
+    main {
+        margin-left: 0;
+        padding: var(--sp-4);
+    }
+
+    section {
+        padding: var(--sp-5);
+        border-radius: var(--radius-md);
+    }
+
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform var(--duration-slow) var(--ease-out);
+        width: 260px;
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
+        box-shadow: var(--shadow-xl);
+    }
+
+    .menu-toggle {
+        display: flex;
+    }
+
+    header {
+        padding-left: 56px;
+    }
+
+    .kpi-grid {
+        grid-template-columns: 1fr;
+        gap: var(--sp-3);
+    }
+
+    .kpi-card {
+        flex-direction: row;
+        align-items: center;
+        gap: var(--sp-4);
+        padding: var(--sp-4) var(--sp-5);
+    }
+
+    .kpi-value {
+        font-size: 24px;
+    }
+
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-wrap {
+        height: 220px;
+    }
+
+    .chart-wrap--pie {
+        height: 240px;
+    }
+
+    .achievement-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .achievement-grid--improvements {
+        grid-template-columns: 1fr;
+    }
+
+    .achievement-kpi-strip {
+        grid-template-columns: 1fr;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .form-row--thirds {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .input-split {
+        grid-template-columns: 1fr;
+    }
+
+    /* ── Chat modal ── */
+    .chat-modal {
+        width: calc(100vw - 32px);
+        right: 16px;
+        bottom: 80px;
+        height: 60vh;
+        max-height: calc(100vh - 120px);
+        border-radius: var(--radius-lg);
+    }
+
+    .chat-fab {
+        bottom: 16px;
+        right: 16px;
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+    }
+
+    /* ── Table mobile card layout ── */
+    .table-wrap {
+        border-radius: var(--radius-md);
+    }
+
+    #marks-table thead {
+        display: none;
+    }
+
+    #marks-table,
+    #marks-table tbody,
+    #marks-table tr,
+    #marks-table td {
+        display: block;
+    }
+
+    #marks-table tr {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: var(--sp-3) var(--sp-4);
+        margin-bottom: var(--sp-3);
+        background: var(--surface);
+    }
+
+    #marks-table td {
+        padding: 6px 0;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    #marks-table td:last-child {
+        border-bottom: none;
+    }
+
+    #marks-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        font-size: 12px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .td-actions {
+        justify-content: flex-end;
+    }
+}
+
+/* ── Small mobile (≤ 480px) ── */
+@media (max-width: 480px) {
+    main {
+        padding: var(--sp-3);
+    }
+
+    section {
+        padding: var(--sp-4);
+    }
+
+    .section-header h2 {
+        font-size: 18px;
+    }
+
+    .form-row--thirds {
+        grid-template-columns: 1fr;
+    }
+
+    .kpi-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--sp-1);
+    }
+
+    .kpi-value {
+        font-size: 28px;
+    }
+
+    .chart-wrap {
+        height: 200px;
+    }
+
+    .chart-wrap--pie {
+        height: 220px;
+    }
+
+    .chat-modal {
+        width: calc(100vw - 16px);
+        right: 8px;
+        bottom: 72px;
+        height: 55vh;
+        border-radius: var(--radius-md);
+    }
+
+    .chat-fab {
+        bottom: 12px;
+        right: 12px;
+        width: 46px;
+        height: 46px;
+        font-size: 22px;
+    }
+
+    .chat-modal-header {
+        padding: var(--sp-3) var(--sp-4);
+        font-size: 14px;
+    }
+
+    .chat-modal-body .suggested-prompts {
+        padding: var(--sp-2) var(--sp-3);
+        gap: 4px;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+    }
+
+    .chat-modal-body .prompt-btn {
+        font-size: 11px;
+        padding: 4px 10px;
+        flex-shrink: 0;
+    }
+
+    .chat-messages {
+        padding: var(--sp-3);
+    }
+
+    .chat-bubble {
+        font-size: 13px;
+        padding: var(--sp-2) var(--sp-3);
+    }
+
+    .chat-input-area {
+        padding: var(--sp-2) var(--sp-3);
+    }
+
+    .chat-input-area textarea {
+        font-size: 13px;
+        padding: 8px 12px;
+    }
+
+    .goal-card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--sp-3);
+    }
+
+    .goal-card-actions {
+        justify-content: flex-end;
+    }
+
+    .goal-kpi-strip {
+        grid-template-columns: 1fr;
+    }
+
+    .goal-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .goal-type-chips {
+        gap: 6px;
+    }
+
+    .goal-type-chip {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+}

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Gradelytics — Track, analyze, and predict your academic performance with AI-powered insights. Know exactly where you stand.">
+    <title>Gradelytics — Know exactly where you stand</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="variables.css">
+    <link rel="stylesheet" href="landing.css">
+</head>
+<body>
+
+    <!-- ── Header ── -->
+    <header class="site-header">
+        <div class="header-inner">
+            <a href="/" class="header-brand">
+                <img src="images/logo.png" alt="" class="header-logo-icon">
+                <span class="header-wordmark">Gradelytics</span>
+            </a>
+            <div class="header-right">
+                <nav class="header-nav">
+                    <a href="#how-it-works" class="header-nav-link">How It Works</a>
+                    <a href="#features" class="header-nav-link">Features</a>
+                    <a href="#faq" class="header-nav-link">FAQ</a>
+                </nav>
+                <a href="dashboard.html" class="btn btn-primary btn-sm">Get Started Free</a>
+            </div>
+            <button class="header-mobile-toggle" id="header-mobile-toggle" aria-label="Menu">
+                <i class='bx bx-menu'></i>
+            </button>
+        </div>
+        <div class="header-mobile-nav" id="header-mobile-nav">
+            <a href="#how-it-works" class="header-mobile-link">How It Works</a>
+            <a href="#features" class="header-mobile-link">Features</a>
+            <a href="#faq" class="header-mobile-link">FAQ</a>
+            <a href="dashboard.html" class="header-mobile-link" style="color:var(--color-primary)">Get Started Free</a>
+        </div>
+    </header>
+
+    <!-- ── Hero ── -->
+    <section class="hero">
+        <div class="hero-glow"></div>
+        <div class="hero-inner">
+            <div class="hero-text">
+                <div class="hero-badge"><i class='bx bx-bolt-circle'></i> AI-Powered Academic Tracking</div>
+                <h1 class="hero-headline">Stop guessing.<br><span class="hero-accent">Start knowing.</span></h1>
+                <p class="hero-sub">Upload your results, and Gradelytics instantly tracks your grades, predicts your next semester average, and tells you exactly what to work on — all powered by AI.</p>
+                <div class="hero-ctas">
+                    <a href="dashboard.html" class="btn btn-primary btn-lg">
+                        <i class='bx bx-rocket'></i> Launch Dashboard
+                    </a>
+                    <a href="#how-it-works" class="btn btn-outline btn-lg">
+                        See how it works <i class='bx bx-right-arrow-alt'></i>
+                    </a>
+                </div>
+                <div class="hero-proof">
+                    <span class="hero-proof-item"><i class='bx bx-check-circle'></i> No sign-up required</span>
+                    <span class="hero-proof-item"><i class='bx bx-check-circle'></i> 100% free</span>
+                    <span class="hero-proof-item"><i class='bx bx-check-circle'></i> Your data never leaves your device</span>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="hero-card">
+                    <div class="hero-card-header">
+                        <span class="hero-card-dot hero-card-dot--red"></span>
+                        <span class="hero-card-dot hero-card-dot--yellow"></span>
+                        <span class="hero-card-dot hero-card-dot--green"></span>
+                        <span class="hero-card-title-bar">Dashboard</span>
+                    </div>
+                    <div class="hero-card-body">
+                        <div class="hero-kpi-row">
+                            <div class="hero-kpi">
+                                <span class="hero-kpi-label">Average</span>
+                                <span class="hero-kpi-value hero-kpi-glow">76.4</span>
+                            </div>
+                            <div class="hero-kpi">
+                                <span class="hero-kpi-label">Modules</span>
+                                <span class="hero-kpi-value">12</span>
+                            </div>
+                            <div class="hero-kpi">
+                                <span class="hero-kpi-label">1sts</span>
+                                <span class="hero-kpi-value" style="color:var(--color-growth)">5</span>
+                            </div>
+                        </div>
+                        <div class="hero-chart-area">
+                            <svg class="hero-chart-svg" viewBox="0 0 320 120" preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="heroGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#1D6FE0" stop-opacity="0.35"/>
+                                        <stop offset="100%" stop-color="#1D6FE0" stop-opacity="0.02"/>
+                                    </linearGradient>
+                                </defs>
+                                <path d="M0,100 L40,85 L80,72 L120,65 L160,50 L200,38 L240,30 L280,22 L320,14 L320,120 L0,120Z" fill="url(#heroGrad)"/>
+                                <polyline points="0,100 40,85 80,72 120,65 160,50 200,38 240,30 280,22 320,14" fill="none" stroke="#1D6FE0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <circle cx="320" cy="14" r="4" fill="#1D6FE0"/>
+                                <circle cx="320" cy="14" r="7" fill="#1D6FE0" opacity="0.25"/>
+                            </svg>
+                            <div class="hero-chart-labels">
+                                <span>Y1 S1</span><span>Y1 S2</span><span>Y2 S1</span><span>Y2 S2</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-float hero-float--1">
+                    <i class='bx bx-bot'></i>
+                    <span>Predicted: <strong>82%</strong></span>
+                </div>
+                <div class="hero-float hero-float--2">
+                    <i class='bx bx-trophy'></i>
+                    <span>Gold medal earned!</span>
+                </div>
+                <div class="hero-float hero-float--3">
+                    <i class='bx bx-camera'></i>
+                    <span>Screenshot extracted</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Social Proof Bar ── -->
+    <section class="proof-bar">
+        <div class="container">
+            <div class="proof-bar-inner">
+                <div class="proof-stat">
+                    <span class="proof-stat-value">3</span>
+                    <span class="proof-stat-label">Features</span>
+                </div>
+                <div class="proof-divider"></div>
+                <div class="proof-stat">
+                    <span class="proof-stat-value">AI</span>
+                    <span class="proof-stat-label">Powered</span>
+                </div>
+                <div class="proof-divider"></div>
+                <div class="proof-stat">
+                    <span class="proof-stat-value">0</span>
+                    <span class="proof-stat-label">Sign-ups needed</span>
+                </div>
+                <div class="proof-divider"></div>
+                <div class="proof-stat">
+                    <span class="proof-stat-value">100%</span>
+                    <span class="proof-stat-label">Free forever</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Pain Points ── -->
+    <section class="pain-points">
+        <div class="container">
+            <div class="section-heading">
+                <span class="section-tag">The Problem</span>
+                <h2>Sound familiar?</h2>
+            </div>
+            <div class="pain-grid">
+                <div class="pain-card">
+                    <div class="pain-icon"><i class='bx bx-error-circle'></i></div>
+                    <p>"I have no idea what my current average is across all semesters."</p>
+                </div>
+                <div class="pain-card">
+                    <div class="pain-icon"><i class='bx bx-time'></i></div>
+                    <p>"I spend hours manually entering grades into spreadsheets."</p>
+                </div>
+                <div class="pain-card">
+                    <div class="pain-icon"><i class='bx bx-question-mark'></i></div>
+                    <p>"I have no clue what mark I need next semester to hit my target."</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── How It Works ── -->
+    <section class="how-it-works" id="how-it-works">
+        <div class="container">
+            <div class="section-heading">
+                <span class="section-tag">How It Works</span>
+                <h2>Three steps to clarity</h2>
+                <p class="section-sub">No sign-up. No downloads. Just open and go.</p>
+            </div>
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <div class="step-icon"><i class='bx bx-camera'></i></div>
+                    <h3>Snap &amp; Upload</h3>
+                    <p>Take a screenshot of your results and upload it. Our AI extracts every module, mark, and grade instantly.</p>
+                </div>
+                <div class="step-connector"><i class='bx bx-chevrons-right'></i></div>
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <div class="step-icon"><i class='bx bx-bar-chart'></i></div>
+                    <h3>See Everything</h3>
+                    <p>Get a full breakdown — average per semester, classification distribution, and trends across your entire degree.</p>
+                </div>
+                <div class="step-connector"><i class='bx bx-chevrons-right'></i></div>
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <div class="step-icon"><i class='bx bx-bot'></i></div>
+                    <h3>Get Predicted</h3>
+                    <p>AI predicts your next semester average and tells you exactly what to focus on to hit your target grade.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Features ── -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-heading">
+                <span class="section-tag">Features</span>
+                <h2>Everything you need to stay on track</h2>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card feature-card--large">
+                    <div class="feature-icon feature-icon--primary"><i class='bx bx-camera'></i></div>
+                    <h3>Screenshot Extraction</h3>
+                    <p>Upload a screenshot of your results table and AI automatically extracts every module, mark, and grade. No typing required.</p>
+                    <div class="feature-tag">AI Powered</div>
+                </div>
+                <div class="feature-card feature-card--large">
+                    <div class="feature-icon feature-icon--growth"><i class='bx bx-line-chart'></i></div>
+                    <h3>Grade Prediction</h3>
+                    <p>AI analyzes your history and predicts your next semester average. Know what to expect before results come out.</p>
+                    <div class="feature-tag">AI Powered</div>
+                </div>
+                <div class="feature-card feature-card--large">
+                    <div class="feature-icon feature-icon--accent"><i class='bx bx-bot'></i></div>
+                    <h3>AI Chat Assistant</h3>
+                    <p>Ask anything about your grades. Get personalised study tips, career advice, and performance insights — all based on your actual data.</p>
+                    <div class="feature-tag">AI Powered</div>
+                </div>
+                <div class="feature-card feature-card--large">
+                    <div class="feature-icon feature-icon--gold"><i class='bx bx-trophy'></i></div>
+                    <h3>Goals &amp; Achievements</h3>
+                    <p>Set targets, track progress, and earn medals as you improve. Stay motivated throughout your degree.</p>
+                </div>
+                <div class="feature-card feature-card--large">
+                    <div class="feature-icon" style="background:rgba(168,85,247,0.15);color:#a855f7"><i class='bx bx-bar-chart-alt-2'></i></div>
+                    <h3>Visual Analytics</h3>
+                    <p>Bar charts, pie charts, and stats — see your performance across semesters at a glance.</p>
+                </div>
+                <div class="feature-card feature-card--large">
+                    <div class="feature-icon" style="background:rgba(244,63,94,0.15);color:#f43f5e"><i class='bx bx-download'></i></div>
+                    <h3>CSV Export</h3>
+                    <p>Download your entire academic record as a CSV file. Share it, back it up, or use it however you need.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── CTA Banner ── -->
+    <section class="cta-banner">
+        <div class="container">
+            <div class="cta-banner-inner">
+                <div class="cta-glow"></div>
+                <h2>Ready to know exactly where you stand?</h2>
+                <p>Stop guessing. Start tracking. It takes 30 seconds to get started.</p>
+                <a href="dashboard.html" class="btn btn-primary btn-lg">
+                    <i class='bx bx-rocket'></i> Launch Gradelytics
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── FAQ ── -->
+    <section class="faq" id="faq">
+        <div class="container">
+            <div class="section-heading">
+                <span class="section-tag">FAQ</span>
+                <h2>Common questions</h2>
+            </div>
+            <div class="faq-grid">
+                <details class="faq-item">
+                    <summary>Is it really free?</summary>
+                    <p>Yes. Gradelytics is 100% free with no hidden fees, no trials, and no account required. Just open the dashboard and start using it.</p>
+                </details>
+                <details class="faq-item">
+                    <summary>Do I need to create an account?</summary>
+                    <p>No. There is no sign-up, no login, and no password. All your data is stored locally in your browser — we never see it.</p>
+                </details>
+                <details class="faq-item">
+                    <summary>How does the AI extraction work?</summary>
+                    <p>Upload a screenshot of your results table and our AI vision model reads it, extracts every module name, mark, and grade, and adds them to your dashboard automatically.</p>
+                </details>
+                <details class="faq-item">
+                    <summary>Is my data private?</summary>
+                    <p>Absolutely. Everything stays in your browser's localStorage. Nothing is sent to any server except the AI API calls for extraction and predictions. Your grades never leave your device for storage.</p>
+                </details>
+                <details class="faq-item">
+                    <summary>How accurate are the predictions?</summary>
+                    <p>AI predictions are based on your historical performance patterns. They're designed as guidance, not guarantees — use them as one input alongside your own judgement.</p>
+                </details>
+                <details class="faq-item">
+                    <summary>What if I add the wrong data?</summary>
+                    <p>You can edit or delete any module at any time. There's also a "Delete All" button if you want to start fresh.</p>
+                </details>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Footer ── -->
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <img src="images/logo2.png" alt="" class="footer-logo">
+                <span class="footer-tagline">Know exactly where you stand.</span>
+            </div>
+            <div class="footer-links">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="#features">Features</a>
+                <a href="#faq">FAQ</a>
+                <a href="mailto:hello@gradelytics.com">Contact</a>
+            </div>
+            <div class="footer-social">
+                <a href="#" class="footer-social-link" title="WhatsApp"><i class='bx bxl-whatsapp'></i></a>
+                <a href="mailto:eusingsungie@gmail.com" class="footer-social-link" title="Email"><i class='bx bx-envelope'></i></a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span>&copy; <span id="footer-year"></span> Gradelytics. All rights reserved.</span>
+        </div>
+    </footer>
+
+    <script>
+        document.getElementById('footer-year').textContent = new Date().getFullYear();
+
+        document.getElementById('header-mobile-toggle')?.addEventListener('click', function() {
+            document.getElementById('header-mobile-nav')?.classList.toggle('open');
+        });
+
+        document.querySelectorAll('.header-mobile-link').forEach(link => {
+            link.addEventListener('click', () => {
+                document.getElementById('header-mobile-nav')?.classList.remove('open');
+            });
+        });
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('in-view');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.feature-card, .step-card, .pain-card, .faq-item, .proof-stat').forEach(el => {
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>
