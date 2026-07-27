@@ -14,20 +14,20 @@
   --color-accent-rgb: 20, 201, 174;
   --color-accent-muted: rgba(20, 201, 174, 0.10);
 
-  --color-ink:        #14171A;
-  --color-ink-rgb:    20, 23, 26;
+  --color-ink:        #1E1E2E;
+  --color-ink-rgb:    30, 30, 46;
 
   --color-gold:       #F0A83D;
   --color-gold-rgb:   240, 168, 61;
   --color-gold-muted: rgba(240, 168, 61, 0.10);
 
-  --color-surface:    #F7F9FA;
-  --color-surface-alt:#EFF1F3;
+  --color-surface:    #C8CDD3;
+  --color-surface-alt:#B8BEC6;
 
   /* ── Semantic aliases ── */
   --ink:            var(--color-ink);
   --ink-rgb:        var(--color-ink-rgb);
-  --chrome-bg:      #FFFFFF;
+  --chrome-bg:      #D2D7DD;
   --chrome-text:    var(--color-ink);
   --chrome-border:  var(--border);
   --primary:        var(--color-primary);
@@ -48,10 +48,10 @@
   --bronze-bg:      rgba(192, 122, 32, 0.10);
 
   /* ── Text ── */
-  --text:           #14171A;
-  --text-light:     #4B5563;
-  --muted:          #6B7280;
-  --border:         #E2E5EA;
+  --text:           #1E1E2E;
+  --text-light:     #3A3F4B;
+  --muted:          #505768;
+  --border:         #A0A8B4;
   --border-focus:   var(--color-primary);
 
   /* ── Danger ── */
@@ -84,11 +84,11 @@
   --radius-pill:   999px;
 
   /* ── Shadows (color-tinted) ── */
-  --shadow-xs:     0 1px 2px rgba(var(--color-ink-rgb), 0.04);
-  --shadow-sm:     0 1px 3px rgba(var(--color-ink-rgb), 0.06), 0 1px 2px rgba(var(--color-ink-rgb), 0.04);
-  --shadow-md:     0 4px 6px -1px rgba(var(--color-ink-rgb), 0.06), 0 2px 4px -2px rgba(var(--color-ink-rgb), 0.04);
-  --shadow-lg:     0 10px 15px -3px rgba(var(--color-ink-rgb), 0.06), 0 4px 6px -4px rgba(var(--color-ink-rgb), 0.04);
-  --shadow-xl:     0 20px 25px -5px rgba(var(--color-ink-rgb), 0.08), 0 8px 10px -6px rgba(var(--color-ink-rgb), 0.04);
+  --shadow-xs:     0 1px 2px rgba(var(--color-ink-rgb), 0.08);
+  --shadow-sm:     0 1px 3px rgba(var(--color-ink-rgb), 0.10), 0 1px 2px rgba(var(--color-ink-rgb), 0.06);
+  --shadow-md:     0 4px 6px -1px rgba(var(--color-ink-rgb), 0.12), 0 2px 4px -2px rgba(var(--color-ink-rgb), 0.08);
+  --shadow-lg:     0 10px 15px -3px rgba(var(--color-ink-rgb), 0.12), 0 4px 6px -4px rgba(var(--color-ink-rgb), 0.08);
+  --shadow-xl:     0 20px 25px -5px rgba(var(--color-ink-rgb), 0.15), 0 8px 10px -6px rgba(var(--color-ink-rgb), 0.08);
   --shadow-blue:   0 4px 14px -2px rgba(var(--color-primary-rgb), 0.30);
   --shadow-blue-lg:0 8px 24px -4px rgba(var(--color-primary-rgb), 0.35);
   --shadow-teal:   0 4px 14px -2px rgba(var(--color-accent-rgb), 0.30);
