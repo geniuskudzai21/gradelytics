@@ -3,16 +3,13 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const apiKey = process.env.NVIDIA_API_KEY;
-    if (!apiKey) {
-        return res.status(500).json({ error: 'NVIDIA_API_KEY not configured' });
-    }
-
     try {
         const body = { ...req.body };
-        const modelEnv = body.requestType === 'vision'
-            ? process.env.VISION_MODEL
-            : process.env.AI_MODEL;
+        const isVision = body.requestType === 'vision';
+        const modelEnv = isVision ? process.env.VISION_MODEL : process.env.AI_MODEL;
+        const apiKey = isVision
+            ? (process.env.NVIDIA_VISION_API_KEY || process.env.NVIDIA_API_KEY)
+            : process.env.NVIDIA_API_KEY;
         if (modelEnv) body.model = modelEnv;
         delete body.requestType;
 
@@ -20,7 +17,8 @@ export default async function handler(req, res) {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify(body)
         });

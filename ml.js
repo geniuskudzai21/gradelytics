@@ -108,7 +108,7 @@ async function callAI(messages) {
         body: JSON.stringify({
             requestType: 'chat',
             messages: messages,
-            temperature: 0.7,
+            temperature: 0.3,
             max_tokens: 512,
             stream: false
         })
@@ -122,11 +122,12 @@ async function callAI(messages) {
 }
 
 function extractJSONArray(text) {
-    const start = text.indexOf('[');
+    const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+    const start = cleaned.indexOf('[');
     if (start === -1) return null;
     let depth = 0, inString = false, escaped = false;
-    for (let i = start; i < text.length; i++) {
-        const c = text[i];
+    for (let i = start; i < cleaned.length; i++) {
+        const c = cleaned[i];
         if (escaped) { escaped = false; continue; }
         if (c === '\\') { escaped = true; continue; }
         if (c === '"' && !inString) { inString = true; continue; }
@@ -136,7 +137,7 @@ function extractJSONArray(text) {
         if (c === ']') {
             depth--;
             if (depth === 0) {
-                try { return JSON.parse(text.substring(start, i + 1)); }
+                try { return JSON.parse(cleaned.substring(start, i + 1)); }
                 catch (e) { return null; }
             }
         }
@@ -144,16 +145,17 @@ function extractJSONArray(text) {
     return null;
 }
 
-async function callAIVision(messages) {
+async function callAIVision(messages, extraBody = {}) {
     const response = await fetch(AI_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             requestType: 'vision',
             messages: messages,
-            temperature: 0.1,
-            max_tokens: 1024,
-            stream: false
+            temperature: 0.0,
+            max_tokens: 4096,
+            stream: false,
+            ...extraBody
         })
     });
     if (!response.ok) {
@@ -161,7 +163,26 @@ async function callAIVision(messages) {
         throw new Error(`Vision API error (${response.status}): ${errData}`);
     }
     const data = await response.json();
-    return data.choices[0].message.content;
+    const raw = data.choices[0].message.content;
+    if (typeof raw === 'string') return raw;
+    return normalizeVisionResult(raw);
+}
+
+function normalizeVisionResult(raw) {
+    if (typeof raw === 'string') {
+        try { return normalizeVisionResult(JSON.parse(raw)); } catch (e) { return raw; }
+    }
+    if (Array.isArray(raw)) {
+        return raw.map(e => {
+            if (typeof e === 'string') return e;
+            return e.text || '';
+        }).filter(Boolean).join('\n');
+    }
+    if (raw && typeof raw === 'object') {
+        if (raw.text) return raw.text;
+        if (raw.content) return normalizeVisionResult(raw.content);
+    }
+    return String(raw || '');
 }
 
 function dataURLtoContent(dataURL) {
@@ -251,6 +272,7 @@ If you cannot read the image clearly, return an empty array [].`
         if (!Array.isArray(modules) || modules.length === 0) {
             showToast('Could not extract any modules from the image. Try a clearer screenshot.', 'error');
             extractBtn.disabled = false;
+            extractBtn.innerHTML = 'Extract Results';
             return;
         }
 

@@ -28,20 +28,20 @@ const MIME = {
 
 const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && req.url === '/api/chat') {
-        const apiKey = process.env.NVIDIA_API_KEY;
-        if (!apiKey) {
-            res.writeHead(500, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ error: 'NVIDIA_API_KEY not set. Run: set NVIDIA_API_KEY=your_key' }));
-        }
-
         let body = '';
         for await (const chunk of req) body += chunk;
 
         try {
             const parsed = JSON.parse(body);
-            const modelEnv = parsed.requestType === 'vision'
-                ? process.env.VISION_MODEL
-                : process.env.AI_MODEL;
+            const isVision = parsed.requestType === 'vision';
+            const modelEnv = isVision ? process.env.VISION_MODEL : process.env.AI_MODEL;
+            const apiKey = isVision
+                ? (process.env.NVIDIA_VISION_API_KEY || process.env.NVIDIA_API_KEY)
+                : process.env.NVIDIA_API_KEY;
+            if (!apiKey) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                return res.end(JSON.stringify({ error: 'NVIDIA_API_KEY not set.' }));
+            }
             if (modelEnv) parsed.model = modelEnv;
             delete parsed.requestType;
 
@@ -49,7 +49,8 @@ const server = http.createServer(async (req, res) => {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify(parsed)
             });
