@@ -249,7 +249,7 @@ function addModule() {
 
 document.getElementById('add-module-btn').addEventListener('click', addModule);
 
-function getGradeBadge(grade) {
+function getGradeBadge(grade, mark) {
     const map = {
         '1':   { label: '1st',   cls: 'badge--distinction' },
         '2.1': { label: '2:1',   cls: 'badge--upper' },
@@ -257,7 +257,9 @@ function getGradeBadge(grade) {
         'P':   { label: 'Pass',  cls: 'badge--pass' },
         'F':   { label: 'Fail',  cls: 'badge--fail' }
     };
-    const info = map[grade] || { label: grade, cls: 'badge--default' };
+    let resolved = grade;
+    if (!map[resolved] && mark >= 90) resolved = '1';
+    const info = map[resolved] || { label: grade, cls: 'badge--default' };
     return `<span class="badge ${info.cls}">${info.label}</span>`;
 }
 
@@ -271,7 +273,7 @@ function displayModules() {
             <td data-label="Part">${module.part}</td>
             <td data-label="Semester">${module.semester}</td>
             <td data-label="Mark" class="td-mark">${module.mark}</td>
-            <td data-label="Classification">${getGradeBadge(module.grade)}</td>
+            <td data-label="Classification">${getGradeBadge(module.grade, module.mark)}</td>
             <td data-label="Actions" class="td-actions">
                 <button class="btn-icon-sm btn-icon-sm--edit" onclick="editModule(${index})" title="Edit"><i class='bx bx-edit-alt'></i></button>
                 <button class="btn-icon-sm btn-icon-sm--delete" onclick="deleteModule(${index})" title="Delete"><i class='bx bx-trash'></i></button>
