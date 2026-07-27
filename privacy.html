@@ -44,6 +44,11 @@
                 <i class='bx bx-menu'></i>
             </button>
         </div>
+        <div class="header-mobile-nav" id="header-mobile-nav">
+            <a href="index.html" class="header-mobile-link">Home</a>
+            <a href="dashboard.html" class="header-mobile-link">Dashboard</a>
+            <a href="terms.html" class="header-mobile-link">Terms and Conditions</a>
+        </div>
     </header>
 
     <section class="legal-page">
@@ -190,7 +195,13 @@
 
     <script>
         document.getElementById('header-mobile-toggle')?.addEventListener('click', function() {
-            document.querySelector('.header-right')?.classList.toggle('open');
+            document.getElementById('header-mobile-nav')?.classList.toggle('open');
+        });
+
+        document.querySelectorAll('.header-mobile-link').forEach(link => {
+            link.addEventListener('click', () => {
+                document.getElementById('header-mobile-nav')?.classList.remove('open');
+            });
         });
     </script>
 </body>
