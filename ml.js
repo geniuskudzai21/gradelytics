@@ -244,27 +244,38 @@ async function extractFromScreenshot() {
     extractBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i> Extracting...';
 
     try {
-        const visionContent = [
+        const ocrText = await callAIVision([
             {
-                type: 'text',
-                text: `This is a screenshot of academic results. Extract ALL module entries visible in the image and return them as a JSON array. Each entry must have these fields:
-- "name": the course/module name ONLY — strip any course codes, module codes, or alphanumeric prefixes (e.g. "CS101 Intro to Programming" should become "Intro to Programming", "MATH200 Linear Algebra" should become "Linear Algebra")
+                role: 'user',
+                content: [
+                    {
+                        type: 'text',
+                        text: 'Transcribe ALL text visible in this image exactly as it appears, preserving the structure, spacing, and section headers. Do not summarize or omit anything.'
+                    },
+                    dataURLtoContent(screenshotBase64)
+                ]
+            }
+        ]);
+
+        if (!ocrText || !ocrText.trim()) {
+            showToast('Could not read any text from the image. Try a clearer screenshot.', 'error');
+            extractBtn.disabled = false;
+            extractBtn.innerHTML = 'Extract Results';
+            return;
+        }
+
+        const reply = await callAI([
+            { role: 'system', content: 'You extract structured module data from OCR text of academic results. Return ONLY a valid JSON array, no other text.' },
+            { role: 'user', content: `Here is the extracted text from a screenshot of academic results:\n\n${ocrText}\n\nCRITICAL RULES for Part and Semester:\n1. The results are organized hierarchically: Part headings appear first, then Semester headings within each Part, then modules under each Semester.\n2. Parts appear in order (Part 1 first, then Part 2, etc.). Once a new Part heading appears, all following modules belong to that new Part until another Part heading appears.\n3. Within each Part, Semesters appear in order (Semester 1 first, then Semester 2). Once a new Semester heading appears, all following modules belong to that new Semester until another Semester or Part heading appears.\n4. A Part or Semester heading may only appear once at the top of its section — modules listed after it with no new heading still belong to that same Part/Semester.\n5. Track the CURRENT Part and CURRENT Semester as you read through the modules. Assign each module the current Part and Semester values.\n\nExtract ALL module entries and return them as a JSON array. Each entry must have these fields:
+- "name": the course/module name ONLY — strip any course codes, module codes, or alphanumeric prefixes (e.g. "CS101 Intro to Programming" should become "Intro to Programming")
 - "year": the academic year (as text)
-- "part": the part number (as text)
-- "semester": the semester number (as a number)
+- "part": the current part number (as text)
+- "semester": the current semester number (as a number)
 - "mark": the mark/score (as a number, 0-100)
 - "grade": the classification/grade exactly as shown (one of: "1", "2.1", "2.2", "P", "F")
 
-Return ONLY a valid JSON array with no other text, no markdown formatting, no code blocks. Example:
-[{"name":"Intro to Programming","year":"2024","part":"1","semester":1,"mark":85,"grade":"1"}]
-
-If you cannot read the image clearly, return an empty array [].`
-            },
-            dataURLtoContent(screenshotBase64)
-        ];
-
-        const reply = await callAIVision([
-            { role: 'user', content: visionContent }
+Return ONLY a valid JSON array with no other text, no markdown formatting, no code blocks.
+If you cannot find any modules, return an empty array [].` }
         ]);
 
         let modules = extractJSONArray(reply) || [];
