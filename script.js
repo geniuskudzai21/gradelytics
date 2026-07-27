@@ -49,6 +49,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (window.innerWidth <= 768) {
                 sidebar.classList.remove('active');
             }
+
+            setTimeout(observeRevealElements, 50);
         });
     });
 
@@ -57,7 +59,139 @@ document.addEventListener('DOMContentLoaded', function () {
     setActiveNav('input');
 
     window.addEventListener('resize', checkScreenSize);
+
+    /* ── Theme Toggle ── */
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) {
+        const savedTheme = localStorage.getItem('gradelytics-theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        updateThemeIcon(savedTheme);
+
+        themeToggle.addEventListener('click', function () {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('gradelytics-theme', next);
+            updateThemeIcon(next);
+            renderGraph();
+            renderPieChart();
+        });
+    }
+
+    function updateThemeIcon(theme) {
+        const icon = themeToggle?.querySelector('i');
+        if (!icon) return;
+        icon.className = theme === 'dark' ? 'bx bx-sun' : 'bx bx-moon';
+    }
+
+    /* ── Welcome Banner Greeting ── */
+    updateWelcomeBanner();
+
+    /* ── Header Scroll Effect ── */
+    const header = document.querySelector('header');
+    window.addEventListener('scroll', function () {
+        if (window.scrollY > 10) {
+            header.classList.add('scrolled');
+        } else {
+            header.classList.remove('scrolled');
+        }
+    });
+
+    /* ── Scroll Reveal ── */
+    initScrollReveal();
 });
+
+/* ── Welcome Banner ── */
+function updateWelcomeBanner() {
+    const hour = new Date().getHours();
+    let greeting = 'Good morning';
+    if (hour >= 12 && hour < 17) greeting = 'Good afternoon';
+    else if (hour >= 17) greeting = 'Good evening';
+
+    const greetingEl = document.getElementById('welcome-greeting');
+    if (greetingEl) greetingEl.textContent = `${greeting}, Genius`;
+
+    const mods = JSON.parse(localStorage.getItem('modules') || '[]');
+    const avgEl = document.getElementById('welcome-avg');
+    const modEl = document.getElementById('welcome-modules');
+    const trendEl = document.getElementById('welcome-trend');
+
+    if (mods.length > 0) {
+        const avg = (mods.reduce((s, m) => s + m.mark, 0) / mods.length).toFixed(1);
+        animateCounter(avgEl, 0, parseFloat(avg), 800);
+        animateCounter(modEl, 0, mods.length, 600);
+
+        if (mods.length >= 2) {
+            const sorted = [...mods].sort((a, b) => {
+                const keyA = `${a.year}-${a.part}-${a.semester}`;
+                const keyB = `${b.year}-${b.part}-${b.semester}`;
+                return keyA.localeCompare(keyB);
+            });
+            const firstHalf = sorted.slice(0, Math.floor(sorted.length / 2));
+            const secondHalf = sorted.slice(Math.floor(sorted.length / 2));
+            const avgFirst = firstHalf.reduce((s, m) => s + m.mark, 0) / firstHalf.length;
+            const avgSecond = secondHalf.reduce((s, m) => s + m.mark, 0) / secondHalf.length;
+            const diff = (avgSecond - avgFirst).toFixed(1);
+            if (trendEl) {
+                if (diff > 0) {
+                    trendEl.innerHTML = `<span style="color:var(--color-growth)">+${diff}</span>`;
+                } else if (diff < 0) {
+                    trendEl.innerHTML = `<span style="color:var(--danger)">${diff}</span>`;
+                } else {
+                    trendEl.textContent = '0';
+                }
+            }
+        } else {
+            if (trendEl) trendEl.textContent = '--';
+        }
+    } else {
+        if (avgEl) avgEl.textContent = '0';
+        if (modEl) modEl.textContent = '0';
+        if (trendEl) trendEl.textContent = '--';
+    }
+}
+
+/* ── Animated Counter ── */
+function animateCounter(el, start, end, duration) {
+    if (!el) return;
+    const isFloat = end % 1 !== 0;
+    const startTime = performance.now();
+
+    function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = start + (end - start) * eased;
+        el.textContent = isFloat ? current.toFixed(1) : Math.round(current);
+        if (progress < 1) requestAnimationFrame(update);
+    }
+    requestAnimationFrame(update);
+}
+
+/* ── Scroll Reveal ── */
+let revealObserver;
+
+function initScrollReveal() {
+    revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('revealed');
+                revealObserver.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.08 });
+
+    observeRevealElements();
+}
+
+function observeRevealElements() {
+    document.querySelectorAll('.kpi-card, .chart-card, .input-card, .achievement-card, .goal-card, .welcome-banner').forEach(el => {
+        if (!el.classList.contains('revealed')) {
+            el.classList.add('reveal');
+            revealObserver.observe(el);
+        }
+    });
+}
 
 let modules = JSON.parse(localStorage.getItem('modules')) || [];
 
@@ -357,13 +491,22 @@ function updateStatistics() {
 
     const overallAverage = totalCourses > 0 ? (totalMarks / totalCourses).toFixed(1) : "0";
 
-    document.getElementById('total-marks').textContent = totalMarks;
-    document.getElementById('average').textContent = overallAverage;
-    document.getElementById('total-modules').textContent = totalCourses;
+    const avgEl = document.getElementById('average');
+    const marksEl = document.getElementById('total-marks');
+    const modulesEl = document.getElementById('total-modules');
+
+    const prevAvg = parseFloat(avgEl?.textContent) || 0;
+    const prevMarks = parseInt(marksEl?.textContent) || 0;
+    const prevModules = parseInt(modulesEl?.textContent) || 0;
+
+    animateCounter(avgEl, prevAvg, parseFloat(overallAverage), 600);
+    animateCounter(marksEl, prevMarks, totalMarks, 500);
+    animateCounter(modulesEl, prevModules, totalCourses, 400);
 
     renderGraph();
     renderPieChart();
     updateAchievements();
+    updateWelcomeBanner();
 }
 
 function renderPieChart() {
