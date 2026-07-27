@@ -191,7 +191,7 @@ body {
    Header
    ═══════════════════════════════════════════════════════ */
 header {
-    background: rgba(255, 255, 255, 0.85);
+    background: var(--chrome-bg);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     color: var(--chrome-text);
