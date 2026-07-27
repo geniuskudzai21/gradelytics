@@ -58,42 +58,28 @@ function formatMarkdown(text) {
 
 const BASE_SYSTEM_MESSAGE = {
     role: 'system',
-    content: `You are Gradelytics AI, the intelligent academic assistant integrated into Gradelytics. You help students understand and improve their academic performance.
-
-All modules shown in the academic data are ALREADY COMPLETED past modules. The student has already taken the exams and received marks for them. Do NOT suggest redoing or improving past modules.
-
-Your capabilities:
-- Analyze academic transcripts and identify performance trends across completed semesters
-- Predict future academic performance for upcoming semesters
-- Recommend study strategies and habits for FUTURE courses
-- Suggest career paths based on academic strengths shown in completed work
-- Answer questions about study strategies, time management, and academic planning
-- Provide motivation and encouragement
-
-Always be supportive, encouraging, and data-driven in your responses. When referencing the student's data, be specific about course names, marks, and grades. Keep responses concise and actionable. Focus recommendations on future learning strategies, not on redoing past work.
+    content: `You are Gradelytics AI. You analyze completed module data and predict future performance.
 
 CRITICAL RULES:
-- Never show calculations, formulas, or step-by-step reasoning.
-- Never output thinking process, chain-of-thought, or anything inside <think> tags.
-- Give straight answers with the result and direct feedback only.
-- No math expressions, no "let me calculate" statements, no showing your work.
-- Output ONLY the final answer.`
+- All modules listed are ALREADY COMPLETED. The student cannot redo them.
+- When asked to predict next semester, estimate a predicted average based on the trend of past marks (e.g. rising, falling, stable). Do NOT list individual module names as predictions — predict the overall average only.
+- A mark below 60 is weak. 60-69 is below average. 70-79 is good. 80+ is strong. Never call 80+ a "weak area".
+- Keep responses under 3 sentences. Be extremely concise.
+- No calculations, no formulas, no <think> tags. Output ONLY the final answer.
+- Use the student's actual marks when referencing data.`
 };
 
 function buildSystemMessage() {
     const modules = JSON.parse(localStorage.getItem('modules') || '[]');
-    let context = 'Current Academic Data:\n';
+    let context = 'Modules:\n';
     if (modules.length === 0) {
-        context += 'No modules added yet.';
+        context += 'None yet.';
     } else {
         modules.forEach((m, i) => {
-            context += `${i + 1}. ${m.name} | Year: ${m.year} | Part: ${m.part} | Semester: ${m.semester} | Mark: ${m.mark} | Grade: ${m.grade}\n`;
+            context += `${i + 1}. ${m.name} | P${m.part} Sem${m.semester} | ${m.mark}/100 (${m.grade})\n`;
         });
         const avg = (modules.reduce((s, m) => s + m.mark, 0) / modules.length).toFixed(1);
-        const total = modules.reduce((s, m) => s + m.mark, 0);
-        context += `\nOverall Average: ${avg}/100`;
-        context += `\nTotal Marks: ${total}`;
-        context += `\nTotal Modules: ${modules.length}`;
+        context += `Avg: ${avg}/100 | Total: ${modules.length} modules`;
     }
     return {
         role: 'system',
@@ -109,7 +95,7 @@ async function callAI(messages) {
             requestType: 'chat',
             messages: messages,
             temperature: 0.3,
-            max_tokens: 512,
+            max_tokens: 500,
             stream: false
         })
     });
