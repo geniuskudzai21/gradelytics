@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Gradelytics Privacy Policy — Learn how we handle and protect your data.">
+    <title>Privacy Policy — Gradelytics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="variables.css">
+    <link rel="stylesheet" href="landing.css">
+    <style>
+        .legal-page { padding: 120px 0 80px; background: var(--color-ink); min-height: 100vh; }
+        .legal-inner { max-width: 760px; margin: 0 auto; padding: 0 50px; }
+        .legal-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--color-primary); background: rgba(var(--color-primary-rgb), 0.1); border: 1px solid rgba(var(--color-primary-rgb), 0.15); margin-bottom: var(--sp-4); letter-spacing: 0.03em; text-transform: uppercase; font-family: var(--font-heading); }
+        .legal-badge i { font-size: 13px; }
+        .legal-inner h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 800; color: #fff; font-family: var(--font-heading); line-height: 1.15; margin-bottom: var(--sp-3); }
+        .legal-meta { font-size: 14px; color: rgba(255,255,255,0.35); margin-bottom: var(--sp-8); }
+        .legal-inner h2 { font-size: 20px; font-weight: 700; color: #fff; font-family: var(--font-heading); margin: var(--sp-8) 0 var(--sp-3); }
+        .legal-inner h3 { font-size: 16px; font-weight: 600; color: #fff; font-family: var(--font-heading); margin: var(--sp-6) 0 var(--sp-2); }
+        .legal-inner p, .legal-inner li { font-size: 15px; color: rgba(255,255,255,0.55); line-height: 1.8; margin-bottom: var(--sp-3); }
+        .legal-inner ul, .legal-inner ol { padding-left: var(--sp-5); margin-bottom: var(--sp-3); }
+        .legal-inner li { margin-bottom: var(--sp-2); }
+        .legal-inner a { color: var(--color-primary); text-decoration: none; }
+        .legal-inner a:hover { text-decoration: underline; }
+        .legal-divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: var(--sp-8) 0; }
+    </style>
+</head>
+<body>
+
+    <header class="site-header">
+        <div class="header-inner">
+            <a href="index.html" class="header-brand">
+                <img src="images/logo.png" alt="" class="header-logo-icon">
+                <span class="header-wordmark">Gradelytics</span>
+            </a>
+            <div class="header-right">
+                <a href="index.html" class="btn btn-outline btn-sm">Back to Home</a>
+                <a href="dashboard.html" class="btn btn-primary btn-sm">Get Started Free</a>
+            </div>
+            <button class="header-mobile-toggle" id="header-mobile-toggle" aria-label="Menu">
+                <i class='bx bx-menu'></i>
+            </button>
+        </div>
+    </header>
+
+    <section class="legal-page">
+        <div class="legal-inner">
+            <span class="legal-badge"><i class='bx bx-shield-quarter'></i> Legal</span>
+            <h1>Privacy Policy</h1>
+            <p class="legal-meta">Last updated: 27 July 2026</p>
+
+            <p>This Privacy Policy explains how Gradelytics ("we", "us", or "our") handles information when you use our website and dashboard application (collectively, the "Service"). We are committed to protecting your privacy and being transparent about our data practices.</p>
+
+            <h2>1. Information We Collect</h2>
+
+            <h3>1.1 Information You Provide Directly</h3>
+            <p>When you use Gradelytics, you may provide the following types of information:</p>
+            <ul>
+                <li><strong>Academic Data:</strong> Module names, academic years, part/semester numbers, marks, and classifications that you manually enter or upload via screenshots</li>
+                <li><strong>Screenshot Images:</strong> Images of results tables that you upload for AI-powered data extraction</li>
+                <li><strong>Chat Messages:</strong> Questions and conversations you have with the AI chat assistant</li>
+                <li><strong>Goals and Preferences:</strong> Academic goals you set and track within the application</li>
+            </ul>
+
+            <h3>1.2 Information Collected Automatically</h3>
+            <ul>
+                <li><strong>Usage Data:</strong> Basic analytics such as pages visited and features used, collected through standard web server logs</li>
+                <li><strong>Device Information:</strong> Browser type, operating system, and screen resolution for compatibility purposes</li>
+            </ul>
+
+            <h2>2. How We Store Your Data</h2>
+
+            <h3>2.1 Local Browser Storage</h3>
+            <p>The vast majority of your data — including all academic records, goals, achievements, and preferences — is stored exclusively in your web browser's <strong>localStorage</strong>. This means:</p>
+            <ul>
+                <li>Your data stays on your device and is never transmitted to or stored on any Gradelytics server</li>
+                <li>We have no access to the academic data you enter into the dashboard</li>
+                <li>Your data persists until you clear your browser data or use the "Delete All" function</li>
+                <li>Your data is not synced across devices or browsers</li>
+            </ul>
+
+            <h3>2.2 AI API Communications</h3>
+            <p>Certain features require sending data to third-party AI APIs for processing:</p>
+            <ul>
+                <li><strong>Screenshot Extraction:</strong> When you upload a screenshot, the image is sent to a third-party vision AI model (currently hosted via NVIDIA NIM) for analysis. The image is processed in real-time and is not stored by the AI provider after processing.</li>
+                <li><strong>Grade Predictions:</strong> When you request a grade prediction, your academic data (module names, marks, and grades) is sent to a large language model API to generate predictions. This data is sent per-request and is not retained.</li>
+                <li><strong>AI Chat:</strong> When you use the AI chat assistant, your conversation messages along with your academic data context are sent to a large language model API to generate responses.</li>
+            </ul>
+
+            <h2>3. How We Use Your Information</h2>
+            <p>We use the information we collect for the following purposes:</p>
+            <ul>
+                <li>To provide and operate the Service, including displaying your academic data, generating statistics, and rendering charts</li>
+                <li>To process screenshot uploads and extract academic data using AI</li>
+                <li>To generate grade predictions and personalised academic insights</li>
+                <li>To power the AI chat assistant with relevant context about your academic performance</li>
+                <li>To maintain and improve the Service's functionality and user experience</li>
+                <li>To detect and prevent abuse or misuse of the Service</li>
+            </ul>
+
+            <h2>4. Data Sharing and Disclosure</h2>
+            <p>We do not sell, trade, or rent your personal information to third parties. Your data may be shared only in the following limited circumstances:</p>
+            <ul>
+                <li><strong>Third-Party AI Providers:</strong> As described in Section 2.2, data is sent to third-party AI APIs for extraction, prediction, and chat features. These providers process data on a per-request basis and do not retain it.</li>
+                <li><strong>Legal Requirements:</strong> We may disclose your information if required to do so by law or in response to valid legal processes.</li>
+                <li><strong>Business Transfers:</strong> In the event of a merger, acquisition, or sale of assets, your information may be transferred as part of that transaction, subject to the same privacy commitments.</li>
+            </ul>
+
+            <h2>5. Data Security</h2>
+            <p>We take reasonable measures to protect the security of the Service:</p>
+            <ul>
+                <li>All data transmitted between your browser and our servers uses HTTPS encryption</li>
+                <li>AI API communications are encrypted in transit</li>
+                <li>We do not maintain a central database of user academic data</li>
+                <li>Your academic data remains on your device, reducing the risk of centralised data breaches</li>
+            </ul>
+            <p>However, no method of electronic transmission or storage is 100% secure. We cannot guarantee the absolute security of your data.</p>
+
+            <h2>6. Your Rights and Choices</h2>
+            <p>You have the following rights regarding your data:</p>
+            <ul>
+                <li><strong>Access:</strong> All your data is stored in your browser and is visible to you at all times within the dashboard</li>
+                <li><strong>Modification:</strong> You can edit any module or goal at any time through the dashboard interface</li>
+                <li><strong>Deletion:</strong> You can delete individual modules or use the "Delete All" function to remove all data at once</li>
+                <li><strong>Export:</strong> You can download all your academic data as a CSV file at any time</li>
+                <li><strong>Chat History:</strong> You can clear all AI chat messages at any time using the clear chat function</li>
+            </ul>
+
+            <h2>7. Cookies and Tracking</h2>
+            <p>Gradelytics uses minimal cookies and tracking technologies:</p>
+            <ul>
+                <li>We do not use advertising cookies or third-party analytics trackers</li>
+                <li>We do not use cookies for behavioural advertising or cross-site tracking</li>
+                <li>Essential cookies may be used for the basic operation of the Service</li>
+            </ul>
+
+            <h2>8. Children's Privacy</h2>
+            <p>The Service is not directed at children under the age of 13. We do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe your child has provided personal information to us, please contact us at <a href="mailto:hello@gradelytics.com">hello@gradelytics.com</a> and we will take steps to delete such information.</p>
+
+            <h2>9. International Data Transfers</h2>
+            <p>The Service is operated from servers that may be located in different countries. When you use AI features, your data may be transmitted to and processed in countries other than your own. By using the Service, you consent to the transfer of your information to these countries, which may have different data protection laws than your jurisdiction.</p>
+
+            <h2>10. Changes to This Privacy Policy</h2>
+            <p>We may update this Privacy Policy from time to time to reflect changes in our practices, technology, legal requirements, or other factors. When we make changes, we will update the "Last updated" date at the top of this page. We encourage you to review this Privacy Policy periodically. Your continued use of the Service after changes are posted constitutes your acceptance of the updated policy.</p>
+
+            <h2>11. Third-Party Links</h2>
+            <p>The Service may contain links to third-party websites or services (such as social media platforms). We are not responsible for the privacy practices or content of those third-party sites. We encourage you to review the privacy policies of any third-party sites you visit.</p>
+
+            <h2>12. Data Retention</h2>
+            <p>Since your data is stored in your browser's localStorage, it is retained for as long as you keep it. We do not maintain server-side copies of your academic data. AI API providers may retain anonymised usage logs for a limited period as required by their respective policies.</p>
+
+            <h2>13. Your Consent</h2>
+            <p>By using Gradelytics, you consent to this Privacy Policy and agree to the data practices described herein. If you do not agree with this policy, please do not use the Service.</p>
+
+            <h2>14. Contact Us</h2>
+            <p>If you have any questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us at:</p>
+            <ul>
+                <li>Email: <a href="mailto:hello@gradelytics.com">hello@gradelytics.com</a></li>
+            </ul>
+            <p>We will respond to your enquiry within 30 days.</p>
+        </div>
+    </section>
+
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <img src="images/logo2.png" alt="" class="footer-logo">
+                <span class="footer-tagline">Know exactly where you stand.</span>
+            </div>
+            <div class="footer-links">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="index.html#features">Features</a>
+                <a href="index.html#faq">FAQ</a>
+                <a href="terms.html">Terms</a>
+                <a href="privacy.html">Privacy</a>
+                <a href="mailto:hello@gradelytics.com">Contact</a>
+            </div>
+            <div class="footer-social">
+                <a href="#" class="footer-social-link" title="WhatsApp"><i class='bx bxl-whatsapp'></i></a>
+                <a href="mailto:eusingsungie@gmail.com" class="footer-social-link" title="Email"><i class='bx bx-envelope'></i></a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span>&copy; <script>document.write(new Date().getFullYear())</script> Gradelytics. All rights reserved.</span>
+        </div>
+    </footer>
+
+    <script>
+        document.getElementById('header-mobile-toggle')?.addEventListener('click', function() {
+            document.querySelector('.header-right')?.classList.toggle('open');
+        });
+    </script>
+</body>
+</html>
