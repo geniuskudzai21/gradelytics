@@ -9,13 +9,20 @@ export default async function handler(req, res) {
     }
 
     try {
+        const body = { ...req.body };
+        const modelEnv = body.requestType === 'vision'
+            ? process.env.VISION_MODEL
+            : process.env.AI_MODEL;
+        if (modelEnv) body.model = modelEnv;
+        delete body.requestType;
+
         const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(req.body)
+            body: JSON.stringify(body)
         });
 
         const text = await response.text();

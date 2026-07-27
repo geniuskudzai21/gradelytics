@@ -1,5 +1,4 @@
 const AI_API_URL = '/api/chat';
-const AI_MODEL = 'meta/llama-3.2-11b-vision-instruct';
 const CHAT_STORAGE_KEY = 'ai_chat_messages';
 
 let chatMessages = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY)) || [];
@@ -107,7 +106,7 @@ async function callAI(messages) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            model: AI_MODEL,
+            requestType: 'chat',
             messages: messages,
             temperature: 0.7,
             max_tokens: 512,
@@ -121,8 +120,6 @@ async function callAI(messages) {
     const data = await response.json();
     return data.choices[0].message.content;
 }
-
-const VISION_MODEL = 'meta/llama-3.2-11b-vision-instruct';
 
 function extractJSONArray(text) {
     const start = text.indexOf('[');
@@ -152,7 +149,7 @@ async function callAIVision(messages) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            model: VISION_MODEL,
+            requestType: 'vision',
             messages: messages,
             temperature: 0.1,
             max_tokens: 1024,

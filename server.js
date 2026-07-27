@@ -38,13 +38,20 @@ const server = http.createServer(async (req, res) => {
         for await (const chunk of req) body += chunk;
 
         try {
+            const parsed = JSON.parse(body);
+            const modelEnv = parsed.requestType === 'vision'
+                ? process.env.VISION_MODEL
+                : process.env.AI_MODEL;
+            if (modelEnv) parsed.model = modelEnv;
+            delete parsed.requestType;
+
             const apiRes = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${apiKey}`,
                     'Content-Type': 'application/json'
                 },
-                body
+                body: JSON.stringify(parsed)
             });
             const text = await apiRes.text();
             res.writeHead(apiRes.status, { 'Content-Type': 'application/json' });
