@@ -777,7 +777,6 @@ section.active {
 
 #marks-table tbody tr:hover {
     background: rgba(var(--primary-rgb), 0.05);
-    transform: scale(1.002);
 }
 
 #marks-table tbody tr:nth-child(even) {
