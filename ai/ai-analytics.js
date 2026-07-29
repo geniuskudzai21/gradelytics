@@ -226,19 +226,36 @@ async function detectWeakAreas() {
         resultEl.innerHTML = '<div class="pred-section" style="padding:16px;text-align:center;color:var(--text-light)"><i class="bx bx-info-circle" style="font-size:24px"></i><p>No academic data found. Add modules in the Input Details section first.</p></div>';
         return;
     }
+
+    const weakModules = modules.filter(m => m.mark < 60);
+    if (weakModules.length === 0) {
+        resultEl.innerHTML = `<div class="pred-section" style="padding:16px;text-align:center">
+            <i class="bx bx-check-circle" style="font-size:40px;color:var(--color-growth)"></i>
+            <h4 style="margin:8px 0 0;color:var(--ink)">No Weak Areas Detected</h4>
+            <p style="color:var(--text-light);font-size:13px">All your modules are above 60%. Keep up the great work!</p>
+        </div>`;
+        return;
+    }
+
     resultEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-light)"><div class="typing-indicator" style="display:inline-flex"><span></span><span></span><span></span></div><p style="margin-top:8px">Analyzing your weak areas...</p></div>';
 
-    const prompt = `Based on the completed modules, identify areas where the student performed below 60% or significantly below their average.
+    const weakContext = weakModules.map((m, i) =>
+        `${i + 1}. ${m.name} | P${m.part} Sem${m.semester} | ${m.mark}/100`
+    ).join('\n');
 
-For each weak area found, list it with the module name, the actual mark, and one specific actionable suggestion to improve.
+    const prompt = `Below are the student's modules that scored below 60%. Identify patterns in these weak areas (e.g. programming-heavy, theoretical, quantitative) and suggest study strategies for handling similar types of modules in the future.
+
+Weak modules:
+${weakContext}
 
 Respond using EXACTLY this format:
+WEAK_PATTERNS:
+- <pattern 1>
+- <pattern 2>
 
-WEAK_AREAS:
-- Module: <name> | Mark: <mark> | Suggestion: <1 sentence improvement tip>
-
-If no weak areas exist (all marks above 60%), respond with:
-NO_WEAK_AREAS: Keep up the great work! All modules are performing well.`;
+FUTURE_STRATEGIES:
+- <strategy 1>
+- <strategy 2>`;
 
     try {
         const systemMsg = buildSystemMessage();
@@ -246,58 +263,64 @@ NO_WEAK_AREAS: Keep up the great work! All modules are performing well.`;
             systemMsg,
             { role: 'user', content: prompt }
         ]);
-        resultEl.innerHTML = formatWeakAreas(response);
+        resultEl.innerHTML = formatWeakAreas(response, weakModules);
     } catch (error) {
         resultEl.innerHTML = '<div class="pred-section" style="padding:16px;text-align:center;color:var(--danger)"><i class="bx bx-error-circle" style="font-size:24px"></i><p>Analysis failed: ' + error.message + '</p></div>';
     }
 }
 
-function formatWeakAreas(text) {
+function formatWeakAreas(text, weakModules) {
     const lines = text.split('\n');
-    let items = [];
-    let noWeak = false;
+    let patterns = [];
+    let strategies = [];
+    let currentSection = '';
 
     for (const line of lines) {
         const trimmed = line.trim();
-        if (/^NO_WEAK_AREAS/i.test(trimmed)) {
-            noWeak = true;
-        } else if (/^[-*]\s*Module:/i.test(trimmed)) {
-            const nameMatch = trimmed.match(/Module:\s*([^|]+)/i);
-            const markMatch = trimmed.match(/Mark:\s*(\d+(\.\d+)?)/i);
-            const suggestionMatch = trimmed.match(/Suggestion:\s*(.+)/i);
-            items.push({
-                name: nameMatch ? nameMatch[1].trim() : 'Unknown',
-                mark: markMatch ? parseFloat(markMatch[1]) : null,
-                suggestion: suggestionMatch ? suggestionMatch[1].trim() : 'Review your study approach for this module.'
-            });
+        if (/^WEAK_PATTERNS/i.test(trimmed)) {
+            currentSection = 'patterns';
+        } else if (/^FUTURE_STRATEGIES/i.test(trimmed)) {
+            currentSection = 'strategies';
+        } else if (currentSection === 'patterns' && /^[-*]\s/.test(trimmed)) {
+            patterns.push(trimmed.replace(/^[-*]\s+/, ''));
+        } else if (currentSection === 'strategies' && /^[-*]\s/.test(trimmed)) {
+            strategies.push(trimmed.replace(/^[-*]\s+/, ''));
         }
     }
 
-    if (noWeak && items.length === 0) {
-        return `<div class="pred-section" style="padding:16px;text-align:center">
-            <i class="bx bx-check-circle" style="font-size:40px;color:var(--color-growth)"></i>
-            <h4 style="margin:8px 0 0;color:var(--ink)">No Weak Areas Detected</h4>
-            <p style="color:var(--text-light);font-size:13px">Keep up the great work! All your modules are performing well.</p>
+    const weakList = weakModules.map(m => {
+        const markColor = m.mark < 40 ? '#DC2626' : '#F0A83D';
+        return `<div class="weak-item" style="background:rgba(220,38,38,0.06);border-left:3px solid ${markColor}">
+            <div class="weak-item-icon"><i class="bx bx-error" style="color:${markColor}"></i></div>
+            <div class="weak-item-content">
+                <h4 style="color:var(--ink)">${m.name} <span style="color:${markColor};font-weight:700">(${m.mark}%)</span></h4>
+                <p style="font-size:12px;color:var(--muted)">Part ${m.part} &middot; Semester ${m.semester}</p>
+            </div>
         </div>`;
+    }).join('');
+
+    let html = `<div class="pred-section"><div class="pred-section-title"><i class='bx bx-error-circle'></i> Low-Scoring Modules (Below 60%)</div>${weakList}</div>`;
+
+    if (patterns.length > 0) {
+        html += `<div class="pred-section"><div class="pred-section-title"><i class='bx bx-trending-up'></i> Common Patterns</div>`;
+        patterns.forEach(p => {
+            html += `<div class="pred-item pred-strategy" style="margin-bottom:6px">${p}</div>`;
+        });
+        html += `</div>`;
     }
 
-    if (items.length === 0) {
-        return formatMarkdown(text);
+    if (strategies.length > 0) {
+        html += `<div class="pred-section"><div class="pred-section-title"><i class='bx bx-bulb'></i> Strategies for Future Modules</div>`;
+        strategies.forEach(s => {
+            html += `<div class="pred-item pred-strategy" style="margin-bottom:6px">${s}</div>`;
+        });
+        html += `</div>`;
     }
 
-    let html = `<div class="pred-section"><div class="pred-section-title"><i class='bx bx-error-circle'></i> Areas for Improvement</div>`;
-    items.forEach(item => {
-        const markColor = item.mark < 40 ? '#DC2626' : item.mark < 50 ? '#F0A83D' : '#8B95A3';
-        html += `
-            <div class="weak-item" style="background:rgba(220,38,38,0.06);border-left:3px solid ${markColor}">
-                <div class="weak-item-icon"><i class="bx bx-error" style="color:${markColor}"></i></div>
-                <div class="weak-item-content">
-                    <h4 style="color:var(--ink)">${item.name} <span style="color:${markColor};font-weight:700">(${item.mark}%)</span></h4>
-                    <p>${item.suggestion}</p>
-                </div>
-            </div>`;
-    });
-    html += `</div>`;
+    if (!patterns.length && !strategies.length) {
+        html += formatMarkdown(text);
+    }
+
     return html;
 }
 
