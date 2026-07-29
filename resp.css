@@ -319,31 +319,4 @@
         font-size: 13px;
         padding: 8px 12px;
     }
-
-    .goal-card {
-        flex-direction: column;
-        align-items: stretch;
-        gap: var(--sp-3);
-    }
-
-    .goal-card-actions {
-        justify-content: flex-end;
-    }
-
-    .goal-kpi-strip {
-        grid-template-columns: 1fr;
-    }
-
-    .goal-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .goal-type-chips {
-        gap: 6px;
-    }
-
-    .goal-type-chip {
-        padding: 6px 12px;
-        font-size: 12px;
-    }
 }

@@ -185,7 +185,7 @@ function initScrollReveal() {
 }
 
 function observeRevealElements() {
-    document.querySelectorAll('.kpi-card, .chart-card, .input-card, .achievement-card, .goal-card, .welcome-banner').forEach(el => {
+    document.querySelectorAll('.kpi-card, .chart-card, .input-card, .achievement-card, .welcome-banner').forEach(el => {
         if (!el.classList.contains('revealed')) {
             el.classList.add('reveal');
             revealObserver.observe(el);

@@ -1,6 +1,6 @@
 # Gradelytics
 
-Gradelytics is a web application designed to help students track, analyze, and visualize their academic performance. The app allows users to input academic details, view statistics, set goals, and celebrate achievements, all in a modern and responsive interface.
+Gradelytics is a web application designed to help students track, analyze, and visualize their academic performance. The app allows users to input academic details, view statistics, and celebrate achievements, all in a modern and responsive interface.
 
 ## Key Features
 
@@ -9,11 +9,10 @@ Gradelytics is a web application designed to help students track, analyze, and v
 - **Dynamic Statistics** - Bar chart showing average marks per part/semester, pie chart showing classification distribution, overall average, and total marks
 - **AI Grade Prediction** - Predict your next semester average with AI-powered analysis, identify academic strengths, and get personalized study strategy recommendations
 - **Achievement Tracking** - Earn Gold (90+), Silver (80-89), and Bronze (75-79) medals, plus improvement awards for 10+ mark jumps between semesters
-- **Goal Setting** - Create academic goals, track progress in 10% increments, and manage goals with add/delete functionality
 - **Gradelytics AI Chat Assistant** - AI-powered chatbot with access to your academic data for personalized analysis, predictions, career recommendations, and study tips. Includes suggested prompts and persistent chat history
 - **CSV Export** - Download your academic details as a CSV file
 - **Responsive Design** - Mobile-friendly sidebar navigation with hamburger menu toggle
-- **Data Persistence** - All modules, goals, and chat history stored locally in the browser via localStorage
+- **Data Persistence** - All modules and chat history stored locally in the browser via localStorage
 
 ## Technologies Used
 
@@ -26,7 +25,7 @@ Gradelytics is a web application designed to help students track, analyze, and v
 
 ## Purpose
 
-The application empowers students to understand their academic progress, set goals, and receive AI-driven insights for future improvement and career recommendations.
+The application empowers students to understand their academic progress and receive AI-driven insights for future improvement and career recommendations.
 
 ## Live Demo
 
