@@ -110,27 +110,5 @@ document.addEventListener('DOMContentLoaded', function () {
         clearChatBtn.addEventListener('click', clearChat);
     }
 
-    const fab = document.getElementById('chat-fab');
-    const modal = document.getElementById('chat-modal');
-    const modalClose = document.getElementById('chat-modal-close');
-    if (fab && modal) {
-        fab.addEventListener('click', function () {
-            modal.classList.toggle('open');
-            if (modal.classList.contains('open')) {
-                setTimeout(() => document.getElementById('chat-input').focus(), 300);
-            }
-        });
-    }
-    if (modalClose && modal) {
-        modalClose.addEventListener('click', function () {
-            modal.classList.remove('open');
-        });
-    }
-
     renderChatMessages();
-
-    const fabEl = document.getElementById('chat-fab');
-    if (fabEl) {
-        fabEl.classList.add('chat-fab-glow');
-    }
 });
