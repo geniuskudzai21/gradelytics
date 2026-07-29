@@ -16,13 +16,14 @@ function formatMarkdown(text) {
         .replace(/# (.+)/g, '<h3>$1</h3>')
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>');
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/^---+$/gm, '<hr>');
     const lines = html.split('\n');
     let result = [], inList = false, listType = null;
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         const ulMatch = line.match(/^[-*] (.+)/);
-        const olMatch = line.match(/^\d+[.)] (.+)/);
+        const olMatch = line.match(/^(\d+)[.)] (.+)/);
         if (ulMatch) {
             if (!inList || listType !== 'ul') {
                 if (inList) result.push('</' + listType + '>');
@@ -38,13 +39,13 @@ function formatMarkdown(text) {
                 inList = true;
                 listType = 'ol';
             }
-            result.push('<li>' + olMatch[1] + '</li>');
+            result.push('<li>' + olMatch[2] + '</li>');
         } else {
             if (inList) { result.push('</' + listType + '>'); inList = false; listType = null; }
             if (line.trim() === '') {
                 result.push('');
             } else if (
-                !line.startsWith('<h3') && !line.startsWith('<h4') && !line.startsWith('<h5')
+                !line.startsWith('<h3') && !line.startsWith('<h4') && !line.startsWith('<h5') && !line.startsWith('<hr')
             ) {
                 result.push('<p>' + line + '</p>');
             } else {
@@ -58,15 +59,23 @@ function formatMarkdown(text) {
 
 const BASE_SYSTEM_MESSAGE = {
     role: 'system',
-    content: `You are Gradelytics AI. You analyze completed module data and predict future performance.
+    content: `IDENTITY: You are Gradelytics AI, an academic performance assistant. You are NOT Nemotron, not NVIDIA, not any other model.
 
-CRITICAL RULES:
+SCOPE: You ONLY help with academic performance analysis. You do NOT help with general knowledge, coding, creative writing, health, travel, or anything unrelated to academics.
+
+DATA RULES - STRICTLY ENFORCED:
+- The modules listed below are the ONLY data you have. You CANNOT see anything else.
+- NEVER invent, fabricate, guess, or assume any module name, mark, grade, or any other data. If it is not explicitly listed in the modules below, it does not exist.
+- When asked about a specific Part or Semester, ONLY use modules matching that exact Part and Semester from the data. Do NOT pull modules from other Parts or Semesters.
+- When asked for an average, use the precomputed average provided in the data below. Do NOT recalculate it. Output ONLY the number.
 - All modules listed are ALREADY COMPLETED. The student cannot redo them.
-- When asked to predict next semester, estimate a predicted average based on the trend of past marks (e.g. rising, falling, stable). Do NOT list individual module names as predictions — predict the overall average only.
-- A mark below 60 is weak. 60-69 is below average. 70-79 is good. 80+ is strong. Never call 80+ a "weak area".
-- Keep responses under 3 sentences. Be extremely concise.
-- No calculations, no formulas, no <think> tags. Output ONLY the final answer.
-- Use the student's actual marks when referencing data.`
+
+RULES:
+- Keep ALL responses Short and direct.
+- When asked to predict next semester, predict a realistic average in a range of 3 points (e.g., "78-80%") based on trend of past marks.
+- Do NOT give unsolicited advice unless explicitly asked.
+- When calculating averages, use exactly 1 decimal place. Do not round up or down. E.g. 73.456 becomes 73.4, not 73.5.
+- No <think> tags. No explanations. No sign-offs.`
 };
 
 function buildSystemMessage() {
@@ -332,34 +341,30 @@ async function predictNextSemester() {
     }
     resultEl.textContent = 'Analyzing your academic performance...';
 
-    let prompt = `The following is a list of ALREADY COMPLETED past modules (exams taken, marks received). The student will take new, different modules next semester. Based on this historical data, respond using EXACTLY these section headers and format:
+    let prompt = `Predict the next semester average as a range of 3 points (e.g., "78-80"). Analyze the trend of the completed modules above.
 
-PREDICTED_AVERAGE: <number only, 0-100>
+Respond using EXACTLY these headers:
+
+PREDICTED_RANGE: <range like 78-80>
 
 STRENGTHS:
 - <strength 1>
 - <strength 2>
-- <strength 3>
 
 STRATEGIES:
 - <strategy 1>
 - <strategy 2>
-- <strategy 3>
 
-ASSESSMENT: <one paragraph overall assessment>
+ASSESSMENT: <one short sentence>
 
-Do NOT show any calculations, formulas, or step-by-step reasoning. Use EXACTLY the headers above.
+Do NOT invent module names. Be concise.`;
 
-Completed Module Data:\n`;
-    modules.forEach((m, i) => {
-        prompt += `${i + 1}. ${m.name} | Year: ${m.year} | Part: ${m.part} | Semester: ${m.semester} | Mark: ${m.mark} | Grade: ${m.grade}\n`;
-    });
     const avg = (modules.reduce((s, m) => s + m.mark, 0) / modules.length).toFixed(1);
-    prompt += `\nCurrent Overall Average: ${avg}/100`;
 
     try {
+        const systemMsg = buildSystemMessage();
         const prediction = await callAI([
-            { role: 'system', content: 'You are an academic performance analyst. Respond with structured sections using the exact headers provided.' },
+            systemMsg,
             { role: 'user', content: prompt }
         ]);
         resultEl.innerHTML = renderPrediction(prediction, avg);
@@ -374,9 +379,8 @@ function renderPrediction(text, currentAvg) {
     let currentSection = '';
     for (const line of lines) {
         const trimmed = line.trim();
-        if (/^PREDICTED_AVERAGE/i.test(trimmed)) {
-            const num = trimmed.replace(/^[^:]*:\s*/, '').match(/\d+(\.\d+)?/);
-            sections.average = num ? num[0] : trimmed.replace(/^[^:]*:\s*/, '');
+        if (/^PREDICTED_RANGE/i.test(trimmed) || /^PREDICTED_AVERAGE/i.test(trimmed)) {
+            sections.average = trimmed.replace(/^[^:]*:\s*/, '').trim();
             currentSection = '';
         } else if (/^STRENGTHS/i.test(trimmed)) {
             currentSection = 'strengths';
@@ -397,8 +401,8 @@ function renderPrediction(text, currentAvg) {
 
     let html = '';
     if (sections.average) {
-        const avgNum = parseFloat(sections.average);
-        const color = avgNum >= 70 ? 'var(--color-growth)' : avgNum >= 50 ? 'var(--color-gold)' : '#e53e3e';
+        const firstNum = parseFloat(sections.average.match(/\d+(\.\d+)?/)?.[0] || '0');
+        const color = firstNum >= 70 ? 'var(--color-growth)' : firstNum >= 50 ? 'var(--color-gold)' : '#e53e3e';
         html += `<div class="pred-hero">
             <div class="pred-avg" style="--avg-color:${color}">${sections.average}<span class="pred-avg-unit">%</span></div>
             <div class="pred-label">Predicted Next Semester Average</div>
