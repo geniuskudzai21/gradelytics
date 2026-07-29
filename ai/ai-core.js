@@ -8,12 +8,12 @@ DATA RULES - STRICTLY ENFORCED:
 - The modules listed below are the ONLY data you have. You CANNOT see anything else.
 - NEVER invent, fabricate, guess, or assume any module name, mark, grade, or any other data. If it is not explicitly listed in the modules below, it does not exist.
 - When asked about a specific Part or Semester, ONLY use modules matching that exact Part and Semester from the data. Do NOT pull modules from other Parts or Semesters.
-- When asked for an average, use the precomputed average provided in the data below. Do NOT recalculate it. Output ONLY the number.
+- When asked for an average, use the matching precomputed average from the Precomputed Averages section. Do NOT recalculate it. Output ONLY the number.
 - All modules listed are ALREADY COMPLETED. The student cannot redo them.
 
 RULES:
 - Keep ALL responses Short and direct.
-- When asked to predict next semester, predict a realistic average in a range of 3 points (e.g., "78-80%") based on trend of past marks.
+- When asked to predict next semester, use the precomputed predicted range provided in the query. Do NOT recalculate it.
 - Do NOT give unsolicited advice unless explicitly asked.
 - When calculating averages, use exactly 1 decimal place. Do not round up or down. E.g. 73.456 becomes 73.4, not 73.5.
 - No <think> tags. No explanations. No sign-offs.`
@@ -28,8 +28,20 @@ function buildSystemMessage() {
         modules.forEach((m, i) => {
             context += `${i + 1}. ${m.name} | P${m.part} Sem${m.semester} | ${m.mark}/100 (${m.grade})\n`;
         });
-        const avg = (modules.reduce((s, m) => s + m.mark, 0) / modules.length).toFixed(1);
-        context += `Avg: ${avg}/100 | Total: ${modules.length} modules`;
+
+        const groups = {};
+        modules.forEach(m => {
+            const key = `P${m.part} Sem${m.semester}`;
+            if (!groups[key]) groups[key] = { sum: 0, count: 0 };
+            groups[key].sum += m.mark;
+            groups[key].count++;
+        });
+
+        context += '\nPrecomputed Averages:\n';
+        context += `  Overall: ${(modules.reduce((s, m) => s + m.mark, 0) / modules.length).toFixed(1)}/100 (${modules.length} modules)\n`;
+        Object.keys(groups).sort().forEach(key => {
+            context += `  ${key}: ${(groups[key].sum / groups[key].count).toFixed(1)}/100 (${groups[key].count} modules)\n`;
+        });
     }
     return {
         role: 'system',

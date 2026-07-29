@@ -39,6 +39,38 @@ document.addEventListener('DOMContentLoaded', function () {
 /* ─────────────────────────────────────────────
    Predict Next Semester
    ───────────────────────────────────────────── */
+function computeNextPrediction(modules) {
+    const groups = {};
+    modules.forEach(m => {
+        const key = `${m.year}-P${m.part}-Sem${m.semester}`;
+        if (!groups[key]) groups[key] = { sum: 0, count: 0, order: parseInt(m.year) * 100 + parseInt(m.part) * 10 + parseInt(m.semester) };
+        groups[key].sum += m.mark;
+        groups[key].count++;
+    });
+
+    const keys = Object.keys(groups).sort((a, b) => groups[a].order - groups[b].order);
+    const avgs = keys.map(k => groups[k].sum / groups[k].count);
+
+    let predicted;
+    if (avgs.length === 1) {
+        predicted = avgs[0];
+    } else {
+        const n = avgs.length;
+        const xMean = (n - 1) / 2;
+        const yMean = avgs.reduce((s, v) => s + v, 0) / n;
+        let num = 0, den = 0;
+        for (let i = 0; i < n; i++) {
+            num += (i - xMean) * (avgs[i] - yMean);
+            den += (i - xMean) * (i - xMean);
+        }
+        const slope = den !== 0 ? num / den : 0;
+        predicted = yMean + slope * n;
+    }
+
+    predicted = Math.max(0, Math.min(100, predicted));
+    return predicted;
+}
+
 async function predictNextSemester() {
     const modules = JSON.parse(localStorage.getItem('modules') || '[]');
     const resultEl = document.getElementById('predict-result');
@@ -48,25 +80,16 @@ async function predictNextSemester() {
     }
     resultEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-light)"><div class="typing-indicator" style="display:inline-flex"><span></span><span></span><span></span></div><p style="margin-top:8px">Analyzing your academic performance...</p></div>';
 
-    let prompt = `Predict the next semester average as a range of 3 points (e.g., "78-80"). Analyze the trend of the completed modules above.
-
-Respond using EXACTLY these headers:
-
-PREDICTED_RANGE: <range like 78-80>
-
-STRENGTHS:
-- <strength 1>
-- <strength 2>
-
-STRATEGIES:
-- <strategy 1>
-- <strategy 2>
-
-ASSESSMENT: <one short sentence>
-
-Do NOT invent module names. Be concise.`;
-
     const avg = (modules.reduce((s, m) => s + m.mark, 0) / modules.length).toFixed(1);
+    const predicted = computeNextPrediction(modules);
+    const low = Math.max(0, Math.round(predicted - 1.5));
+    const high = Math.min(100, Math.round(predicted + 1.5));
+    const predictedRange = `${low}-${high}`;
+
+    const prompt = `PREDICTED_RANGE: ${predictedRange}
+STRENGTHS:
+STRATEGIES:
+ASSESSMENT:`;
 
     try {
         const systemMsg = buildSystemMessage();
