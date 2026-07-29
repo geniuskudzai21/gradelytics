@@ -39,38 +39,6 @@ document.addEventListener('DOMContentLoaded', function () {
 /* ─────────────────────────────────────────────
    Predict Next Semester
    ───────────────────────────────────────────── */
-function computeNextPrediction(modules) {
-    const groups = {};
-    modules.forEach(m => {
-        const key = `${m.year}-P${m.part}-Sem${m.semester}`;
-        if (!groups[key]) groups[key] = { sum: 0, count: 0, order: parseInt(m.year) * 100 + parseInt(m.part) * 10 + parseInt(m.semester) };
-        groups[key].sum += m.mark;
-        groups[key].count++;
-    });
-
-    const keys = Object.keys(groups).sort((a, b) => groups[a].order - groups[b].order);
-    const avgs = keys.map(k => groups[k].sum / groups[k].count);
-
-    let predicted;
-    if (avgs.length === 1) {
-        predicted = avgs[0];
-    } else {
-        const n = avgs.length;
-        const xMean = (n - 1) / 2;
-        const yMean = avgs.reduce((s, v) => s + v, 0) / n;
-        let num = 0, den = 0;
-        for (let i = 0; i < n; i++) {
-            num += (i - xMean) * (avgs[i] - yMean);
-            den += (i - xMean) * (i - xMean);
-        }
-        const slope = den !== 0 ? num / den : 0;
-        predicted = yMean + slope * n;
-    }
-
-    predicted = Math.max(0, Math.min(100, predicted));
-    return predicted;
-}
-
 async function predictNextSemester() {
     const modules = JSON.parse(localStorage.getItem('modules') || '[]');
     const resultEl = document.getElementById('predict-result');

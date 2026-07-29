@@ -13,11 +13,43 @@ DATA RULES - STRICTLY ENFORCED:
 
 RULES:
 - Keep ALL responses Short and direct.
-- When asked to predict next semester, use the precomputed predicted range provided in the query. Do NOT recalculate it.
+- When asked to predict next semester, use the precomputed Predicted Next Semester Range provided in the context. Do NOT recalculate it. Output the range exactly as shown.
 - Do NOT give unsolicited advice unless explicitly asked.
 - When calculating averages, use exactly 1 decimal place. Do not round up or down. E.g. 73.456 becomes 73.4, not 73.5.
 - No <think> tags. No explanations. No sign-offs.`
 };
+
+function computeNextPrediction(modules) {
+    const groups = {};
+    modules.forEach(m => {
+        const key = `${m.year}-P${m.part}-Sem${m.semester}`;
+        if (!groups[key]) groups[key] = { sum: 0, count: 0, order: parseInt(m.year) * 100 + parseInt(m.part) * 10 + parseInt(m.semester) };
+        groups[key].sum += m.mark;
+        groups[key].count++;
+    });
+
+    const keys = Object.keys(groups).sort((a, b) => groups[a].order - groups[b].order);
+    const avgs = keys.map(k => groups[k].sum / groups[k].count);
+
+    let predicted;
+    if (avgs.length === 1) {
+        predicted = avgs[0];
+    } else {
+        const n = avgs.length;
+        const xMean = (n - 1) / 2;
+        const yMean = avgs.reduce((s, v) => s + v, 0) / n;
+        let num = 0, den = 0;
+        for (let i = 0; i < n; i++) {
+            num += (i - xMean) * (avgs[i] - yMean);
+            den += (i - xMean) * (i - xMean);
+        }
+        const slope = den !== 0 ? num / den : 0;
+        predicted = yMean + slope * n;
+    }
+
+    predicted = Math.max(0, Math.min(100, predicted));
+    return predicted;
+}
 
 function buildSystemMessage() {
     const modules = JSON.parse(localStorage.getItem('modules') || '[]');
@@ -42,6 +74,11 @@ function buildSystemMessage() {
         Object.keys(groups).sort().forEach(key => {
             context += `  ${key}: ${(groups[key].sum / groups[key].count).toFixed(1)}/100 (${groups[key].count} modules)\n`;
         });
+
+        const predicted = computeNextPrediction(modules);
+        const low = Math.max(0, Math.round(predicted - 1.5));
+        const high = Math.min(100, Math.round(predicted + 1.5));
+        context += `\nPredicted Next Semester Range: ${low}-${high}%`;
     }
     return {
         role: 'system',
