@@ -1205,13 +1205,59 @@ section.active {
     color: var(--text-light);
 }
 
-/* ── What-If Form ── */
-.whatif-form {
+/* ── What-If Info ── */
+.whatif-info {
+    margin-bottom: var(--sp-5);
+}
+
+.whatif-weight-bar {
     display: flex;
-    align-items: flex-end;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 8px;
+    gap: 2px;
+}
+
+.whatif-weight-seg {
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+    font-family: var(--font-heading);
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+}
+
+.whatif-weight-note {
+    font-size: 12px;
+    color: var(--text-light);
+    margin: 0;
+}
+
+.whatif-part-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 800;
+    font-family: var(--font-heading);
+    margin-right: 4px;
+}
+
+.whatif-weight-label {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 400;
+}
+
+.whatif-form {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: var(--sp-4);
     margin-bottom: var(--sp-5);
-    flex-wrap: wrap;
 }
 
 .whatif-input-group {
@@ -1327,7 +1373,7 @@ section.active {
 .ai-chat-body {
     display: flex;
     flex-direction: column;
-    height: 400px;
+    height: 470px;
 }
 
 .ai-chat-body .suggested-prompts {

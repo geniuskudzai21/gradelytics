@@ -22,9 +22,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /* ── What-If Simulation ── */
     document.getElementById('whatif-btn').addEventListener('click', simulateWhatIf);
-    document.getElementById('whatif-mark').addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') simulateWhatIf();
+    document.querySelectorAll('#whatif-form input').forEach(input => {
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') simulateWhatIf();
+        });
     });
+    prefillWhatIf();
 
     /* ── Weak Areas ── */
     document.getElementById('weakness-btn').addEventListener('click', detectWeakAreas);
@@ -74,34 +77,76 @@ ASSESSMENT:`;
 /* ─────────────────────────────────────────────
    What-If Simulation
    ───────────────────────────────────────────── */
-function simulateWhatIf() {
-    const markInput = document.getElementById('whatif-mark');
-    const mark = parseFloat(markInput.value);
-    const resultEl = document.getElementById('whatif-result');
+function prefillWhatIf() {
+    const modules = JSON.parse(localStorage.getItem('modules') || '[]');
+    const groups = {};
+    modules.forEach(m => {
+        if (!groups[m.part]) groups[m.part] = { sum: 0, count: 0 };
+        groups[m.part].sum += m.mark;
+        groups[m.part].count++;
+    });
+    ['2', '3', '4'].forEach(p => {
+        const input = document.getElementById('whatif-p' + p);
+        if (input && groups[p]) {
+            input.placeholder = (groups[p].sum / groups[p].count).toFixed(1);
+            input.value = (groups[p].sum / groups[p].count).toFixed(1);
+        }
+    });
+}
 
-    if (isNaN(mark) || mark < 0 || mark > 100) {
+function simulateWhatIf() {
+    const weights = { 2: 0.2, 3: 0.3, 4: 0.5 };
+    const resultEl = document.getElementById('whatif-result');
+    const inputs = {};
+    let hasValue = false;
+
+    for (const part of ['2', '3', '4']) {
+        const input = document.getElementById('whatif-p' + part);
+        const val = parseFloat(input.value);
+        if (!isNaN(val) && val >= 0 && val <= 100) {
+            inputs[part] = val;
+            hasValue = true;
+        } else if (input.value.trim() !== '') {
+            resultEl.classList.add('show');
+            resultEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--danger)"><i class="bx bx-error-circle" style="font-size:24px"></i><p>Enter valid marks (0-100) for the parts you want to simulate.</p></div>';
+            return;
+        }
+    }
+
+    if (!hasValue) {
         resultEl.classList.add('show');
-        resultEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--danger)"><i class="bx bx-error-circle" style="font-size:24px"></i><p>Please enter a valid mark between 0 and 100.</p></div>';
+        resultEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-light)"><i class="bx bx-calculator" style="font-size:24px"></i><p>Enter at least one hypothetical average mark above.</p></div>';
         return;
     }
 
+    let totalWeight = 0;
+    let weightedSum = 0;
+    for (const part of ['2', '3', '4']) {
+        if (inputs[part] !== undefined) {
+            weightedSum += inputs[part] * weights[part];
+            totalWeight += weights[part];
+        }
+    }
+    const finalMark = totalWeight > 0 ? (weightedSum / totalWeight) : 0;
+    const finalDisplay = finalMark.toFixed(1);
+
     let classLabel, classIcon, color, bgColor;
-    if (mark >= 70) {
+    if (finalMark >= 75) {
         classLabel = 'First Class (1st)';
         classIcon = '<i class="bx bx-trophy" style="color:#22A64C"></i>';
         color = '#22A64C';
         bgColor = 'rgba(34, 166, 76, 0.1)';
-    } else if (mark >= 60) {
+    } else if (finalMark >= 60) {
         classLabel = 'Upper Second Class (2:1)';
         classIcon = '<i class="bx bx-like" style="color:#1D6FE0"></i>';
         color = '#1D6FE0';
         bgColor = 'rgba(29, 111, 224, 0.1)';
-    } else if (mark >= 50) {
+    } else if (finalMark >= 50) {
         classLabel = 'Lower Second Class (2:2)';
         classIcon = '<i class="bx bx-minus-circle" style="color:#F0A83D"></i>';
         color = '#F0A83D';
         bgColor = 'rgba(240, 168, 61, 0.1)';
-    } else if (mark >= 40) {
+    } else if (finalMark >= 40) {
         classLabel = 'Third Class (Pass)';
         classIcon = '<i class="bx bx-check" style="color:#8B95A3"></i>';
         color = '#8B95A3';
@@ -113,36 +158,59 @@ function simulateWhatIf() {
         bgColor = 'rgba(220, 38, 38, 0.1)';
     }
 
+    let breakdownHtml = '';
+    let totalWeightUsed = 0;
+    for (const part of ['2', '3', '4']) {
+        if (inputs[part] !== undefined) {
+            const pct = weights[part] * 100;
+            totalWeightUsed += weights[part];
+            breakdownHtml += `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px">
+                <span style="color:var(--text-light)">Part ${part} (${pct}%)</span>
+                <span style="font-weight:600;color:var(--ink)">${inputs[part]}%</span>
+            </div>`;
+        }
+    }
+
     resultEl.classList.add('show');
     resultEl.innerHTML = `
         <div class="whatif-class" style="background:${bgColor}; border-left: 4px solid ${color};">
             <div class="whatif-class-icon">${classIcon}</div>
             <div class="whatif-class-info">
                 <h4 style="color:${color}">${classLabel}</h4>
-                <p>With an average mark of <strong>${mark}%</strong></p>
+                <p>Weighted final mark: <strong>${finalDisplay}%</strong></p>
             </div>
             <div style="margin-left:auto">
-                <span class="whatif-badge" style="background:${color};color:white">${mark}%</span>
+                <span class="whatif-badge" style="background:${color};color:white">${finalDisplay}%</span>
+            </div>
+        </div>
+        <div class="pred-section">
+            <div class="pred-section-title"><i class='bx bx-calculator'></i> Breakdown</div>
+            <div class="pred-assessment" style="padding:8px 14px">
+                ${breakdownHtml}
+                <div style="display:flex;justify-content:space-between;padding:6px 0 0;border-top:1px solid var(--border);margin-top:4px;font-size:14px">
+                    <span style="font-weight:700;color:var(--ink)">Weighted Total (${(totalWeightUsed * 100).toFixed(0)}%)</span>
+                    <span style="font-weight:800;color:${color}">${finalDisplay}%</span>
+                </div>
             </div>
         </div>
         <div class="pred-section">
             <div class="pred-section-title"><i class='bx bx-info-circle'></i> What This Means</div>
             <div class="pred-assessment">
-                ${mark >= 70 ? 'Excellent performance! You are on track for a First Class degree with distinction-level work.' :
-                  mark >= 60 ? 'Great work! A 2:1 is a strong degree classification that opens many career opportunities.' :
-                  mark >= 50 ? 'A 2:2 is a solid degree classification. Focus on improving key modules to reach the next bracket.' :
-                  mark >= 40 ? 'A Pass is acceptable, but aiming higher will improve your career prospects significantly.' :
-                  'A Fail means the module needs to be retaken. Seek academic support and review your study strategies.'}
+                ${finalMark >= 75 ? 'Excellent! A First Class degree is the highest classification. You\'re on track for top-tier graduate opportunities.' :
+                  finalMark >= 60 ? 'Great work! A 2:1 is a strong degree that opens many career paths. Aim higher to reach First Class (75%+).' :
+                  finalMark >= 50 ? 'A 2:2 is a solid degree. Focus on improving your marks to reach the 2:1 threshold (60%).' :
+                  finalMark >= 40 ? 'A Pass is acceptable. Consider where you can improve to strengthen your final classification.' :
+                  'A Fail means the module needs to be retaken. Seek academic support.'}
             </div>
         </div>
         <div class="pred-section">
             <div class="pred-section-title"><i class='bx bx-line-chart'></i> To Reach Next Class</div>
             <div class="pred-assessment">
-                ${mark < 40 ? `You need <strong>${(40 - mark).toFixed(1)}%</strong> more to reach a Pass.` :
-                  mark < 50 ? `You need <strong>${(50 - mark).toFixed(1)}%</strong> more to reach a 2:2.` :
-                  mark < 60 ? `You need <strong>${(60 - mark).toFixed(1)}%</strong> more to reach a 2:1.` :
-                  mark < 70 ? `You need <strong>${(70 - mark).toFixed(1)}%</strong> more to reach a First.` :
-                  'You are already at the highest classification. Maintain this excellent standard!'}
+                ${finalMark < 40 ? `You need <strong>${(40 - finalMark).toFixed(1)}%</strong> more in your weighted average to reach a Pass.` :
+                  finalMark < 50 ? `You need <strong>${(50 - finalMark).toFixed(1)}%</strong> more to reach a 2:2.` :
+                  finalMark < 60 ? `You need <strong>${(60 - finalMark).toFixed(1)}%</strong> more to reach a 2:1.` :
+                  finalMark < 75 ? `You need <strong>${(75 - finalMark).toFixed(1)}%</strong> more to reach First Class.` :
+                  'You\'re already at First Class level. Maintain this excellent standard!'}
             </div>
         </div>
     `;

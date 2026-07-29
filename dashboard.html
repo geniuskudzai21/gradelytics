@@ -299,18 +299,35 @@
                             <i class='bx bx-calculator'></i>
                             <div>
                                 <h3>What-If Simulation</h3>
-                                <p>See what degree classification you'd get with hypothetical average marks.</p>
+                                <p>Enter hypothetical average marks for each part and see your final degree classification.</p>
                             </div>
                         </div>
-                        <div class="whatif-form">
+                        <div class="whatif-info">
+                            <div class="whatif-weight-bar">
+                                <div class="whatif-weight-seg" style="flex:0;background:var(--surface-alt);color:var(--text-light);min-width:0;padding:4px 8px">P1: 0%</div>
+                                <div class="whatif-weight-seg" style="flex:2;background:rgba(29,111,224,0.15);color:var(--primary)">P2: 20%</div>
+                                <div class="whatif-weight-seg" style="flex:3;background:rgba(240,168,61,0.15);color:var(--gold)">P3: 30%</div>
+                                <div class="whatif-weight-seg" style="flex:5;background:rgba(34,166,76,0.15);color:var(--color-growth)">P4: 50%</div>
+                            </div>
+                            <p class="whatif-weight-note">First Class at 75%+ &bull; Part 1 excluded</p>
+                        </div>
+                        <div class="whatif-form" id="whatif-form">
                             <div class="whatif-input-group">
-                                <label>Hypothetical Average Mark</label>
-                                <input type="number" id="whatif-mark" min="0" max="100" placeholder="e.g. 75" autocomplete="off">
+                                <label><span class="whatif-part-badge" style="background:rgba(29,111,224,0.15);color:var(--primary)">P2</span> Part 2 Average <span class="whatif-weight-label">(20%)</span></label>
+                                <input type="number" id="whatif-p2" min="0" max="100" step="0.1" placeholder="e.g. 72" autocomplete="off">
                             </div>
-                            <button id="whatif-btn" class="btn btn-primary">
-                                <i class='bx bx-calculator'></i> Simulate
-                            </button>
+                            <div class="whatif-input-group">
+                                <label><span class="whatif-part-badge" style="background:rgba(240,168,61,0.15);color:var(--gold)">P3</span> Part 3 Average <span class="whatif-weight-label">(30%)</span></label>
+                                <input type="number" id="whatif-p3" min="0" max="100" step="0.1" placeholder="e.g. 68" autocomplete="off">
+                            </div>
+                            <div class="whatif-input-group">
+                                <label><span class="whatif-part-badge" style="background:rgba(34,166,76,0.15);color:var(--color-growth)">P4</span> Part 4 Average <span class="whatif-weight-label">(50%)</span></label>
+                                <input type="number" id="whatif-p4" min="0" max="100" step="0.1" placeholder="e.g. 80" autocomplete="off">
+                            </div>
                         </div>
+                        <button id="whatif-btn" class="btn btn-primary">
+                            <i class='bx bx-calculator'></i> Calculate Degree Class
+                        </button>
                         <div id="whatif-result" class="whatif-result"></div>
                     </div>
 
