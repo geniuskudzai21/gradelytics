@@ -33,8 +33,8 @@
                     <i class='bx bx-shield-quarter'></i>
                     <span>Administrator</span>
                 </div>
-                <button class="btn btn-outline btn-sm btn-block" id="admin-theme-toggle" title="Toggle light / dark theme">
-                    <i class='bx bx-sun'></i> <span>Light mode</span>
+                <button class="theme-toggle-icon" id="admin-theme-toggle" title="Toggle light / dark theme">
+                    <i class='bx bx-sun'></i>
                 </button>
                 <button class="btn btn-outline btn-sm btn-block" id="admin-lock">
                     <i class='bx bx-lock-alt'></i> Lock Console
@@ -95,22 +95,6 @@
                     <h2><i class='bx bx-line-chart'></i> New signups &mdash; last 30 days</h2>
                     <div class="chart-wrap">
                         <canvas id="admin-chart"></canvas>
-                    </div>
-                </div>
-
-                <div class="insight-grid">
-                    <div class="admin-panel">
-                        <h2><i class='bx bx-pie-chart-alt-2'></i> Grade distribution</h2>
-                        <div class="chart-wrap chart-wrap--doughnut">
-                            <canvas id="admin-grade-chart"></canvas>
-                        </div>
-                        <p id="grade-chart-empty" class="insight-empty" hidden>No graded modules yet.</p>
-                    </div>
-
-                    <div class="admin-panel">
-                        <h2><i class='bx bx-book-alt'></i> Most tracked modules</h2>
-                        <div id="admin-top-modules" class="top-modules"></div>
-                        <p id="top-modules-empty" class="insight-empty" hidden>No modules recorded yet.</p>
                     </div>
                 </div>
 
