@@ -360,6 +360,10 @@
         if (el) el.innerHTML = `<i class='bx bx-user-circle'></i> ${currentDisplayName}`;
         const settingsName = document.getElementById('settings-display-name');
         if (settingsName) settingsName.value = currentDisplayName;
+        const greeting = document.getElementById('welcome-greeting');
+        if (greeting && currentDisplayName !== 'Genius') {
+            greeting.textContent = greeting.textContent.replace(/,\s*[^,]*$/, '') + `, ${currentDisplayName}`;
+        }
     }
 
     function setAuthedUI(session) {
@@ -373,10 +377,6 @@
         const parts = rawName.replace(/[^a-zA-Z0-9 ]/g, '').trim();
         currentDisplayName = parts ? parts.charAt(0).toUpperCase() + parts.slice(1) : 'Genius';
         renderDisplayName();
-        const greeting = document.getElementById('welcome-greeting');
-        if (greeting && currentDisplayName !== 'Genius') {
-            greeting.textContent = greeting.textContent.replace(/,\s*[^,]*$/, '') + `, ${currentDisplayName}`;
-        }
         const settingsEmail = document.getElementById('settings-email');
         if (settingsEmail) settingsEmail.value = email;
     }
