@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sign in or create a free Gradelytics account to sync your academic data across devices.">
+    <title>Sign In — Gradelytics</title>
+    <script>
+        try {
+            document.documentElement.setAttribute('data-theme', localStorage.getItem('gradelytics-theme') || 'dark');
+        } catch (e) { /* ignore */ }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="../css/auth.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase-config.js" defer></script>
+    <script src="../js/supabase.js" defer></script>
+</head>
+<body class="auth-body">
+
+    <div class="auth-page" id="auth-page">
+        <div class="auth-card">
+            <div class="auth-head">
+                <a href="../index.html"><img src="../images/logo2.png" alt="Gradelytics" class="auth-logo"></a>
+                <h2 id="auth-title">Welcome back</h2>
+                <p id="auth-subtitle">Sign in to sync your academic data across devices.</p>
+            </div>
+
+            <div class="auth-tabs">
+                <button type="button" class="auth-tab active" data-mode="login">Sign In</button>
+                <button type="button" class="auth-tab" data-mode="signup">Create Account</button>
+            </div>
+
+            <button type="button" id="auth-google" class="btn btn-google">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
+                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/>
+                    <path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/>
+                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09C6.22 6.86 8.87 4.75 12 4.75z"/>
+                </svg>
+                Continue with Google
+            </button>
+
+            <div class="auth-divider"><span>or continue with email</span></div>
+
+            <form id="auth-form" class="auth-form">
+                <div class="auth-field">
+                    <label class="field-label" for="auth-email">Email</label>
+                    <div class="auth-input-wrap">
+                        <i class='bx bx-envelope'></i>
+                        <input type="email" id="auth-email" placeholder="you@example.com" required autocomplete="email">
+                    </div>
+                </div>
+                <div class="auth-field">
+                    <label class="field-label" for="auth-password">Password</label>
+                    <div class="auth-input-wrap">
+                        <i class='bx bxs-lock-alt'></i>
+                        <input type="password" id="auth-password" placeholder="At least 6 characters" minlength="6" required autocomplete="current-password">
+                        <button type="button" class="password-toggle" id="auth-password-toggle" tabindex="-1" aria-label="Show password"><i class='bx bx-show'></i></button>
+                    </div>
+                </div>
+                <p id="auth-error" class="auth-error"></p>
+                <button type="submit" id="auth-submit" class="btn btn-primary btn-full">Sign In</button>
+            </form>
+
+            <p class="auth-back-home"><a href="../index.html"><i class='bx bx-left-arrow-alt'></i> Back to home</a></p>
+        </div>
+    </div>
+
+</body>
+</html>

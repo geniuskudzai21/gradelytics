@@ -1,0 +1,289 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Gradelytics — pages/auth.html
+   ───────────────────────────────────────────────────────────────────────────
+   Standalone sign-in / sign-up page. Reuses the design tokens from
+   css/variables.css and the base button styles that css/style.css normally
+   provides on the dashboard (auth.html does not load style.css).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.auth-body {
+    min-height: 100vh;
+    margin: 0;
+    background:
+        radial-gradient(600px 400px at 85% -10%, rgba(var(--color-primary-rgb), 0.14), transparent 60%),
+        radial-gradient(500px 360px at -10% 110%, rgba(var(--color-accent-rgb), 0.08), transparent 60%),
+        var(--color-ink);
+    color: var(--ink);
+}
+
+.auth-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-5);
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 360px;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: var(--sp-6);
+    box-shadow: var(--shadow-xl);
+}
+
+.auth-head {
+    text-align: center;
+    margin-bottom: var(--sp-4);
+}
+
+.auth-logo {
+    height: 60px;
+    margin-bottom: var(--sp-2);
+}
+
+.auth-head h2 {
+    font-family: var(--font-heading);
+    font-size: 19px;
+    margin: 0 0 var(--sp-1);
+    color: var(--ink);
+}
+
+.auth-head p {
+    font-size: 13px;
+    color: var(--text-light);
+    margin: 0;
+}
+
+.auth-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-2);
+    background: var(--surface);
+    padding: var(--sp-1);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--sp-4);
+}
+
+.auth-tab {
+    border: none;
+    background: transparent;
+    color: var(--text-light);
+    font: 600 13px/1 var(--font-body);
+    padding: 8px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--duration-base), color var(--duration-base);
+}
+
+.auth-tab.active {
+    background: var(--primary);
+    color: #fff;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+}
+
+.auth-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+}
+
+.auth-input-wrap {
+    position: relative;
+}
+
+.auth-input-wrap i {
+    position: absolute;
+    top: 50%;
+    left: 11px;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: var(--muted);
+    pointer-events: none;
+}
+
+.auth-field input {
+    width: 100%;
+    padding: 8px 11px 8px 34px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--ink);
+    font: 400 14px/1.4 var(--font-body);
+    outline: none;
+    transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+}
+
+.auth-field input#auth-password {
+    padding-right: 36px;
+}
+
+.auth-field input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.auth-input-wrap:focus-within i {
+    color: var(--primary);
+}
+
+.password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 4px;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--muted);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0;
+}
+
+.password-toggle:hover {
+    color: var(--ink);
+}
+
+.password-toggle:active i {
+    color: var(--primary);
+}
+
+.auth-error {
+    min-height: 4px;
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--danger);
+    text-align: center;
+}
+
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    margin: var(--sp-3) 0 var(--sp-2);
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+.auth-back-home {
+    text-align: center;
+    margin: var(--sp-4) 0 0;
+    font-size: 13px;
+}
+
+.auth-back-home a {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-light);
+    text-decoration: none;
+    transition: color var(--duration-fast);
+}
+
+.auth-back-home a:hover {
+    color: var(--primary);
+}
+
+/* ── Base buttons (from css/style.css, needed without loading it) ── */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: var(--font-heading);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--duration-base) var(--ease-out);
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.btn-primary {
+    background: linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.08) 100%), var(--primary);
+    color: #fff;
+    box-shadow: var(--shadow-blue), inset 0 1px 0 rgba(255,255,255,0.22);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.06) 100%), var(--primary-hover);
+    box-shadow: var(--shadow-blue-lg), inset 0 1px 0 rgba(255,255,255,0.25);
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm), inset 0 2px 4px rgba(0,0,0,0.12);
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-full { width: 100%; }
+
+.btn-google {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    padding: 8px 11px;
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font: 600 13px/1 var(--font-body);
+    cursor: pointer;
+    transition: border-color var(--duration-fast), background var(--duration-fast);
+}
+
+.btn-google:hover {
+    border-color: var(--primary);
+    background: var(--primary-muted);
+}
+
+.btn-google svg {
+    flex-shrink: 0;
+}
+
+/* ── Field label (from css/style.css) ── */
+
+.field-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-light);
+    font-family: var(--font-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}

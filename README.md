@@ -34,7 +34,7 @@ The application empowers students to understand their academic progress and rece
 
 1. Create a project at https://supabase.com.
 2. Run `supabase/schema.sql` in the Supabase SQL Editor.
-3. Copy the **Project URL** and **anon key** from Settings → API into `supabase-config.js`.
+3. Copy the **Project URL** and **anon key** from Settings → API into `js/supabase-config.js`.
 4. For server-side reference, the same values can be added to `.env` as `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
 
 See [supabase/README.md](supabase/README.md) for the full walkthrough.

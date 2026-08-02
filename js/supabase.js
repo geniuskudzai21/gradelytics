@@ -41,7 +41,6 @@
     let configured = false;
     let currentDisplayName = 'Genius';
     let currentUserId = null;
-    let resetAuthFormMode = null;
 
     /* ── Client bootstrap ── */
 
@@ -485,33 +484,16 @@
         rerender();
     }
 
-    /* ── Auth modal UI ── */
+    /* ── Auth page UI (pages/auth.html) ── */
 
-    function showAuthModal() {
-        const modal = document.getElementById('auth-modal');
-        if (!modal) return;
-        modal.style.display = 'flex';
-        document.body.classList.add('auth-locked');
-        // Clear any leftover credentials so a signed-out user's login
-        // information is never left visible on the auth form.
-        const emailInput = document.getElementById('auth-email');
-        const passwordInput = document.getElementById('auth-password');
-        if (emailInput) emailInput.value = '';
-        if (passwordInput) passwordInput.value = '';
-        if (typeof resetAuthFormMode === 'function') resetAuthFormMode();
+    function redirectAfterLogin() {
+        let adminPassword = null;
+        try { adminPassword = sessionStorage.getItem('gradelytics_admin_password'); } catch (e) { /* ignore */ }
+        window.location.href = adminPassword ? 'admin.html' : 'dashboard.html';
     }
 
-    function hideAuthModal() {
-        const modal = document.getElementById('auth-modal');
-        if (modal) modal.style.display = 'none';
-        document.body.classList.remove('auth-locked');
-    }
-
-    function wireAuthModal() {
-        const modal = document.getElementById('auth-modal');
-        if (!modal) return;
-
-        const tabs = modal.querySelectorAll('.auth-tab');
+    function wireAuthPage() {
+        const tabs = document.querySelectorAll('.auth-tab');
         const form = document.getElementById('auth-form');
         const emailInput = document.getElementById('auth-email');
         const passwordInput = document.getElementById('auth-password');
@@ -535,7 +517,6 @@
         }
 
         let mode = 'login';
-        resetAuthFormMode = () => setMode('login');
 
         function setMode(next) {
             mode = next;
@@ -549,6 +530,8 @@
             }
             errorEl.textContent = '';
         }
+
+        setMode('login');
 
         tabs.forEach(tab => {
             tab.addEventListener('click', () => setMode(tab.dataset.mode));
@@ -581,7 +564,11 @@
                     errorEl.textContent = 'Check your inbox — we sent a confirmation link.';
                     return;
                 }
-                // Successful sign-in is handled by onAuthStateChange below.
+                if (mode === 'login' && result.user) {
+                    redirectAfterLogin();
+                    return;
+                }
+                // Otherwise the signed-in redirect is handled by onAuthStateChange.
             } catch (err) {
                 errorEl.textContent = err.message || 'Something went wrong. Try again.';
             } finally {
@@ -596,12 +583,12 @@
         if (!logoutBtn) return;
         logoutBtn.addEventListener('click', async function () {
             if (!sb) {
-                window.location.href = 'index.html';
+                window.location.href = '../index.html';
                 return;
             }
             await signOut();
-            showAuthModal();
             fallbackToLocal();
+            window.location.href = 'auth.html';
         });
     }
 
@@ -707,12 +694,12 @@
         if (signoutBtn) {
             signoutBtn.addEventListener('click', async function () {
                 if (!sb) {
-                    window.location.href = 'index.html';
+                    window.location.href = '../index.html';
                     return;
                 }
                 await signOut();
-                showAuthModal();
                 fallbackToLocal();
+                window.location.href = 'auth.html';
             });
         }
 
@@ -745,7 +732,7 @@
                     }
                     try { await signOut(); } catch (err) { /* already deleted */ }
                     localStorage.clear();
-                    window.location.href = 'index.html';
+                    window.location.href = '../index.html';
                 } finally {
                     yesBtn.disabled = false;
                     yesBtn.textContent = 'Delete Account';
@@ -758,38 +745,51 @@
 
     async function initApp() {
         const hasConfig = init();
-        wireAuthModal();
-        wireLogout();
-        wireSettings();
+        const isAuthPage = !!document.getElementById('auth-page');
+
+        if (isAuthPage) {
+            wireAuthPage();
+        } else {
+            wireLogout();
+            wireSettings();
+        }
 
         if (!hasConfig) {
-            fallbackToLocal();
+            if (!isAuthPage) fallbackToLocal();
             return;
         }
 
         onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN') {
-                hideAuthModal();
-                setAuthedUI(session);
-                loadAllFromDB();
+                if (isAuthPage) {
+                    redirectAfterLogin();
+                } else {
+                    setAuthedUI(session);
+                    loadAllFromDB();
+                }
             } else if (event === 'SIGNED_OUT') {
                 currentDisplayName = 'Genius';
                 clearUserCache();
                 currentUserId = null;
                 setInMemoryModules([]);
                 setInMemoryChat([]);
-                showAuthModal();
-                fallbackToLocal();
+                if (!isAuthPage) {
+                    fallbackToLocal();
+                    window.location.href = 'auth.html';
+                }
             }
         });
 
         const { session } = await getSession();
         if (session) {
-            hideAuthModal();
-            setAuthedUI(session);
-            await loadAllFromDB();
-        } else {
-            showAuthModal();
+            if (isAuthPage) {
+                redirectAfterLogin();
+            } else {
+                setAuthedUI(session);
+                await loadAllFromDB();
+            }
+        } else if (!isAuthPage) {
+            window.location.href = 'auth.html';
         }
     }
 

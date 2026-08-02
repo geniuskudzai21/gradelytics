@@ -8,24 +8,24 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="variables.css">
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="resp.css">
+    <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/resp.css">
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js" defer></script>
-    <script src="supabase.js" defer></script>
-    <script src="script2.js" defer></script>
-    <script src="ai/ai-config.js" defer></script>
-    <script src="ai/ai-markdown.js" defer></script>
-    <script src="ai/ai-core.js" defer></script>
-    <script src="ai/ai-vision.js" defer></script>
-    <script src="ai/ai-prediction.js" defer></script>
-    <script src="ai/ai-chat.js" defer></script>
-    <script src="ai/ai-analytics.js" defer></script>
+    <script src="../js/supabase-config.js" defer></script>
+    <script src="../js/supabase.js" defer></script>
+    <script src="../js/script2.js" defer></script>
+    <script src="../ai/ai-config.js" defer></script>
+    <script src="../ai/ai-markdown.js" defer></script>
+    <script src="../ai/ai-core.js" defer></script>
+    <script src="../ai/ai-vision.js" defer></script>
+    <script src="../ai/ai-prediction.js" defer></script>
+    <script src="../ai/ai-chat.js" defer></script>
+    <script src="../ai/ai-analytics.js" defer></script>
 
 </head>
 <body>
@@ -36,7 +36,7 @@
     <!-- Sidebar -->
     <div class="sidebar active">
         <div class="sidebar-brand">
-            <a href="index.html"><img src="images/logo.png" alt="Gradelytics" class="sidebar-logo"></a>
+            <a href="../index.html"><img src="../images/logo.png" alt="Gradelytics" class="sidebar-logo"></a>
         </div>
         <ul class="sidebar-menu">
             <li><a href="#input" class="nav-link active"><i class='bx bx-edit'></i>  Input Details</a></li>
@@ -56,8 +56,8 @@
 
     <header>
         <div class="navbar">
-            <a href="index.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit">
-                <img src="images/logo.png" alt="Gradelytics logo" class="nav-logo">
+            <a href="../index.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit">
+                <img src="../images/logo.png" alt="Gradelytics logo" class="nav-logo">
                 <h1>Gradelytics</h1>
             </a>
             <div class="navbar-right">
@@ -589,234 +589,6 @@
     </div>
     
 
-
-    <!-- Auth Modal -->
-    <div id="auth-modal" class="auth-modal">
-        <div class="auth-modal-card">
-            <div class="auth-modal-head">
-                <img src="images/logo2.png" alt="Gradelytics" class="auth-modal-logo">
-                <h2 id="auth-title">Welcome back</h2>
-            </div>
-            <div class="auth-tabs">
-                <button type="button" class="auth-tab active" data-mode="login">Sign In</button>
-                <button type="button" class="auth-tab" data-mode="signup">Create Account</button>
-            </div>
-            <button type="button" id="auth-google" class="btn btn-google">
-                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                    <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
-                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/>
-                    <path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/>
-                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09C6.22 6.86 8.87 4.75 12 4.75z"/>
-                </svg>
-                Continue with Google
-            </button>
-            <div class="auth-divider"><span>or continue with email</span></div>
-            <form id="auth-form" class="auth-form">
-                <div class="auth-field">
-                    <label class="field-label" for="auth-email">Email</label>
-                    <div class="auth-input-wrap">
-                        <i class='bx bx-envelope'></i>
-                        <input type="email" id="auth-email" placeholder="you@example.com" required autocomplete="email">
-                    </div>
-                </div>
-                <div class="auth-field">
-                    <label class="field-label" for="auth-password">Password</label>
-                    <div class="auth-input-wrap">
-                        <i class='bx bxs-lock-alt'></i>
-                        <input type="password" id="auth-password" placeholder="At least 6 characters" minlength="6" required autocomplete="current-password">
-                        <button type="button" class="password-toggle" id="auth-password-toggle" tabindex="-1" aria-label="Show password"><i class='bx bx-show'></i></button>
-                    </div>
-                </div>
-                <p id="auth-error" class="auth-error"></p>
-                <button type="submit" id="auth-submit" class="btn btn-primary btn-full">Sign In</button>
-            </form>
-        </div>
-    </div>
-
-    <style>
-        .auth-modal {
-            position: fixed;
-            inset: 0;
-            z-index: 9999;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: var(--sp-5);
-            background: rgba(6, 8, 12, 0.72);
-            backdrop-filter: blur(10px);
-        }
-        .auth-modal-card {
-            width: 100%;
-            max-width: 360px;
-            background: var(--surface-alt);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-xl);
-            padding: var(--sp-6);
-            box-shadow: var(--shadow-xl);
-        }
-        .auth-modal-head {
-            text-align: center;
-            margin-bottom: var(--sp-4);
-        }
-        .auth-modal-logo {
-            height: 60px;
-            margin-bottom: var(--sp-2);
-        }
-        .auth-modal-head h2 {
-            font-family: var(--font-heading);
-            font-size: 19px;
-            margin: 0 0 var(--sp-1);
-            color: var(--ink);
-        }
-        .auth-modal-head p {
-            font-size: 13px;
-            color: var(--text-light);
-            margin: 0;
-        }
-        .auth-tabs {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--sp-2);
-            background: var(--surface);
-            padding: var(--sp-1);
-            border-radius: var(--radius-md);
-            margin-bottom: var(--sp-4);
-        }
-        .auth-tab {
-            border: none;
-            background: transparent;
-            color: var(--text-light);
-            font: 600 13px/1 var(--font-body);
-            padding: 8px;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: background var(--duration-base), color var(--duration-base);
-        }
-        .auth-tab.active {
-            background: var(--primary);
-            color: #fff;
-        }
-        .auth-form {
-            display: flex;
-            flex-direction: column;
-            gap: var(--sp-1);
-        }
-        .auth-field {
-            display: flex;
-            flex-direction: column;
-            gap: var(--sp-1);
-        }
-        .auth-input-wrap {
-            position: relative;
-        }
-        .auth-input-wrap i {
-            position: absolute;
-            top: 50%;
-            left: 11px;
-            transform: translateY(-50%);
-            font-size: 16px;
-            color: var(--muted);
-            pointer-events: none;
-        }
-        .auth-field input {
-            width: 100%;
-            padding: 8px 11px 8px 34px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            background: var(--surface);
-            color: var(--ink);
-            font: 400 14px/1.4 var(--font-body);
-            outline: none;
-            transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
-        }
-        .auth-field input#auth-password {
-            padding-right: 36px;
-        }
-        .auth-field input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px var(--primary-glow);
-        }
-        .auth-input-wrap:focus-within i {
-            color: var(--primary);
-        }
-        .password-toggle {
-            position: absolute;
-            top: 50%;
-            right: 4px;
-            transform: translateY(-50%);
-            width: 28px;
-            height: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: none;
-            border-radius: var(--radius-sm);
-            background: transparent;
-            color: var(--muted);
-            font-size: 16px;
-            cursor: pointer;
-            padding: 0;
-        }
-        .password-toggle:hover {
-            color: var(--ink);
-        }
-        .password-toggle:active i {
-            color: var(--primary);
-        }
-        .auth-error {
-            min-height: 4px;
-            margin: 0;
-            font-size: 12.5px;
-            color: var(--danger);
-            text-align: center;
-        }
-        .auth-divider {
-            display: flex;
-            align-items: center;
-            gap: var(--sp-3);
-            margin: var(--sp-3) 0 var(--sp-2);
-            color: var(--muted);
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        .auth-divider::before,
-        .auth-divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border);
-        }
-        .btn-google {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: var(--sp-2);
-            padding: 8px 11px;
-            background: var(--surface);
-            color: var(--ink);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            font: 600 13px/1 var(--font-body);
-            cursor: pointer;
-            transition: border-color var(--duration-fast), background var(--duration-fast);
-        }
-        .btn-google:hover {
-            border-color: var(--primary);
-            background: var(--primary-muted);
-        }
-        .btn-google svg {
-            flex-shrink: 0;
-        }
-        body.auth-locked .menu-toggle,
-        body.auth-locked .sidebar,
-        body.auth-locked header,
-        body.auth-locked main {
-            visibility: hidden;
-        }
-    </style>
-
-    <script src="script.js" defer></script>
+    <script src="../js/script.js" defer></script>
 </body>
 </html>
