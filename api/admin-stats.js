@@ -50,9 +50,11 @@ export default async function handler(req, res) {
             const m = modCount.get(u.id) || 0;
             const c = chatCount.get(u.id) || 0;
             const a = unlockCount.get(u.id) || 0;
+            const meta = u.user_metadata || u.raw_user_meta_data || {};
             return {
                 id: u.id,
                 email: u.email || '(no email)',
+                display_name: meta.display_name || null,
                 created_at: u.created_at || u.createdAt || null,
                 modules: m,
                 chat_messages: c,

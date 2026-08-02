@@ -211,6 +211,152 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    if (req.url.startsWith('/api/admin-user')) {
+        const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const adminPassword = process.env.ADMIN_PASSWORD || '';
+
+        if (!serviceRole || !supabaseUrl) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ error: 'SUPABASE_SERVICE_ROLE_KEY is not configured.' }));
+        }
+        if (!adminPassword) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ error: 'ADMIN_PASSWORD is not configured.' }));
+        }
+
+        const authHeader = req.headers.authorization || '';
+        const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+        if (!provided || !safeEqual(adminPassword, provided)) {
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ error: 'Access denied. Invalid admin password.' }));
+        }
+
+        const parsedUrl = new URL(req.url, 'http://localhost');
+        const id = parsedUrl.searchParams.get('id') || '';
+        const base = supabaseUrl.replace(/\/$/, '');
+        const headers = {
+            'apikey': serviceRole,
+            'Authorization': `Bearer ${serviceRole}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        };
+
+        try {
+            if (req.method === 'GET') {
+                if (!id) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ error: 'Missing user id.' }));
+                }
+                const userRes = await fetch(`${base}/auth/v1/admin/users/${id}`, { headers });
+                if (!userRes.ok) {
+                    res.writeHead(404, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ error: 'User not found.' }));
+                }
+                const user = await userRes.json();
+                const meta = user.user_metadata || user.raw_user_meta_data || {};
+
+                const [modules, chat, achievements] = await Promise.all([
+                    fetchJson(`${base}/rest/v1/modules?select=id,name,year,part,semester,mark,grade&user_id=eq.${encodeURIComponent(id)}&order=year.asc,semester.asc,id.asc`, headers),
+                    fetchJson(`${base}/rest/v1/chat_messages?select=id,role,content,created_at&user_id=eq.${encodeURIComponent(id)}&order=created_at.asc,id.asc`, headers),
+                    fetchJson(`${base}/rest/v1/achievement_unlocks?select=unlock_key,unlocked_at&user_id=eq.${encodeURIComponent(id)}&order=created_at.asc`, headers)
+                ]);
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                return res.end(JSON.stringify({
+                    user: {
+                        id: user.id,
+                        email: user.email || '',
+                        display_name: meta.display_name || null,
+                        created_at: user.created_at || user.createdAt || null,
+                        last_sign_in_at: user.last_sign_in_at || user.lastSignInAt || null,
+                        phone: user.phone || null
+                    },
+                    modules,
+                    chat,
+                    achievements
+                }));
+            }
+
+            if (req.method === 'PUT') {
+                if (!id) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ error: 'Missing user id.' }));
+                }
+                let body = '';
+                for await (const chunk of req) body += chunk;
+                let parsed;
+                try {
+                    parsed = JSON.parse(body || '{}');
+                } catch (err) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ error: 'Invalid JSON body.' }));
+                }
+
+                const curRes = await fetch(`${base}/auth/v1/admin/users/${id}`, { headers });
+                if (!curRes.ok) {
+                    res.writeHead(404, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ error: 'User not found.' }));
+                }
+                const cur = await curRes.json();
+                const curMeta = cur.user_metadata || cur.raw_user_meta_data || {};
+
+                const payload = {};
+                if (parsed.email) payload.email = String(parsed.email);
+                if (parsed.password) payload.password = String(parsed.password);
+                if (typeof parsed.display_name === 'string') {
+                    const clean = parsed.display_name.replace(/[^a-zA-Z0-9 ]/g, '').trim();
+                    if (clean) payload.user_metadata = { ...curMeta, display_name: clean };
+                }
+                if (Object.keys(payload).length === 0) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ error: 'Nothing to update.' }));
+                }
+
+                const updRes = await fetch(`${base}/auth/v1/admin/users/${id}`, {
+                    method: 'PUT',
+                    headers,
+                    body: JSON.stringify(payload)
+                });
+                const updText = await updRes.text();
+                if (!updRes.ok) {
+                    let msg = updText;
+                    try { msg = (JSON.parse(updText).msg) || updText; } catch (e) { /* keep raw */ }
+                    res.writeHead(updRes.status, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ error: 'Update failed: ' + msg }));
+                }
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                return res.end(updText);
+            }
+
+            if (req.method === 'DELETE') {
+                if (!id) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ error: 'Missing user id.' }));
+                }
+                const delRes = await fetch(`${base}/auth/v1/admin/users/${id}`, { method: 'DELETE', headers });
+                if (!delRes.ok && delRes.status !== 404) {
+                    res.writeHead(delRes.status, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ error: 'Failed to delete user.' }));
+                }
+                await Promise.all([
+                    fetch(`${base}/rest/v1/modules?user_id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers }),
+                    fetch(`${base}/rest/v1/chat_messages?user_id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers }),
+                    fetch(`${base}/rest/v1/achievement_unlocks?user_id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers })
+                ]);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                return res.end(JSON.stringify({ ok: true }));
+            }
+
+            res.writeHead(405, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Method not allowed.' }));
+        } catch (err) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: err.message }));
+        }
+        return;
+    }
+
     let filePath = path.join(__dirname, req.url === '/' ? 'index.html' : req.url);
     const ext = path.extname(filePath);
     const contentType = MIME[ext] || 'application/octet-stream';
