@@ -53,17 +53,17 @@ function computeNextPrediction(modules) {
 }
 
 function buildSystemMessage() {
-    const modules = JSON.parse(localStorage.getItem('modules') || '[]');
+    const mods = (typeof GradelyticsDB !== 'undefined') ? GradelyticsDB.getModules() : [];
     let context = 'Modules:\n';
-    if (modules.length === 0) {
+    if (mods.length === 0) {
         context += 'None yet.';
     } else {
-        modules.forEach((m, i) => {
+        mods.forEach((m, i) => {
             context += `${i + 1}. ${m.name} | P${m.part} Sem${m.semester} | ${m.mark}/100 (${m.grade})\n`;
         });
 
         const groups = {};
-        modules.forEach(m => {
+        mods.forEach(m => {
             const key = `P${m.part} Sem${m.semester}`;
             if (!groups[key]) groups[key] = { sum: 0, count: 0 };
             groups[key].sum += m.mark;
@@ -71,12 +71,12 @@ function buildSystemMessage() {
         });
 
         context += '\nPrecomputed Averages:\n';
-        context += `  Overall: ${(modules.reduce((s, m) => s + m.mark, 0) / modules.length).toFixed(1)}/100 (${modules.length} modules)\n`;
+        context += `  Overall: ${(mods.reduce((s, m) => s + m.mark, 0) / mods.length).toFixed(1)}/100 (${mods.length} modules)\n`;
         Object.keys(groups).sort().forEach(key => {
             context += `  ${key}: ${(groups[key].sum / groups[key].count).toFixed(1)}/100 (${groups[key].count} modules)\n`;
         });
 
-        const predicted = computeNextPrediction(modules);
+        const predicted = computeNextPrediction(mods);
         const low = Math.max(0, Math.round(predicted - 1.5));
         const high = Math.min(100, Math.round(predicted + 1.5));
         context += `\nPredicted Next Semester Range: ${low}-${high}%`;

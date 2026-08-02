@@ -18,6 +18,9 @@ function markAchievementUnlocked(key) {
     if (!state[key]) {
         state[key] = new Date().toISOString();
         saveUnlockedState(state);
+        if (window.GradelyticsDB) {
+            GradelyticsDB.saveAchievementUnlock(key, state[key]);
+        }
         return true;
     }
     return false;

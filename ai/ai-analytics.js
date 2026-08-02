@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
    Predict Next Semester
    ───────────────────────────────────────────── */
 async function predictNextSemester() {
-    const modules = JSON.parse(localStorage.getItem('modules') || '[]');
+    const modules = (typeof GradelyticsDB !== 'undefined') ? GradelyticsDB.getModules() : [];
     const resultEl = document.getElementById('predict-result');
     if (modules.length === 0) {
         resultEl.innerHTML = '<div class="pred-section" style="padding:16px;text-align:center;color:var(--text-light)"><i class="bx bx-info-circle" style="font-size:24px"></i><p>No academic data found. Add modules in the Input Details section first.</p></div>';
@@ -78,7 +78,7 @@ ASSESSMENT:`;
    What-If Simulation
    ───────────────────────────────────────────── */
 function prefillWhatIf() {
-    const modules = JSON.parse(localStorage.getItem('modules') || '[]');
+    const modules = (typeof GradelyticsDB !== 'undefined') ? GradelyticsDB.getModules() : [];
     const groups = {};
     modules.forEach(m => {
         if (!groups[m.part]) groups[m.part] = { sum: 0, count: 0 };
@@ -220,7 +220,7 @@ function simulateWhatIf() {
    Weak Area Detection
    ───────────────────────────────────────────── */
 async function detectWeakAreas() {
-    const modules = JSON.parse(localStorage.getItem('modules') || '[]');
+    const modules = (typeof GradelyticsDB !== 'undefined') ? GradelyticsDB.getModules() : [];
     const resultEl = document.getElementById('weakness-result');
     if (modules.length === 0) {
         resultEl.innerHTML = '<div class="pred-section" style="padding:16px;text-align:center;color:var(--text-light)"><i class="bx bx-info-circle" style="font-size:24px"></i><p>No academic data found. Add modules in the Input Details section first.</p></div>';
@@ -328,7 +328,7 @@ function formatWeakAreas(text, weakModules) {
    Career Recommendations
    ───────────────────────────────────────────── */
 async function getCareerRecommendations() {
-    const modules = JSON.parse(localStorage.getItem('modules') || '[]');
+    const modules = (typeof GradelyticsDB !== 'undefined') ? GradelyticsDB.getModules() : [];
     const resultEl = document.getElementById('career-result');
     if (modules.length === 0) {
         resultEl.innerHTML = '<div class="pred-section" style="padding:16px;text-align:center;color:var(--text-light)"><i class="bx bx-info-circle" style="font-size:24px"></i><p>No academic data found. Add modules in the Input Details section first.</p></div>';
@@ -402,7 +402,7 @@ function formatCareers(text) {
    Study Tips
    ───────────────────────────────────────────── */
 async function getStudyTips() {
-    const modules = JSON.parse(localStorage.getItem('modules') || '[]');
+    const modules = (typeof GradelyticsDB !== 'undefined') ? GradelyticsDB.getModules() : [];
     const resultEl = document.getElementById('tips-result');
     if (modules.length === 0) {
         resultEl.innerHTML = '<div class="pred-section" style="padding:16px;text-align:center;color:var(--text-light)"><i class="bx bx-info-circle" style="font-size:24px"></i><p>No academic data found. Add modules in the Input Details section first.</p></div>';

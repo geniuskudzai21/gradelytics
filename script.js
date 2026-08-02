@@ -111,7 +111,7 @@ function updateWelcomeBanner() {
     const greetingEl = document.getElementById('welcome-greeting');
     if (greetingEl) greetingEl.textContent = `${greeting}, Genius`;
 
-    const mods = JSON.parse(localStorage.getItem('modules') || '[]');
+    const mods = modules;
     const avgEl = document.getElementById('welcome-avg');
     const modEl = document.getElementById('welcome-modules');
     const trendEl = document.getElementById('welcome-trend');
@@ -193,7 +193,7 @@ function observeRevealElements() {
     });
 }
 
-let modules = JSON.parse(localStorage.getItem('modules')) || [];
+let modules = [];
 
 function showToast(message, type) {
     const existing = document.querySelector('.toast');
@@ -211,7 +211,7 @@ function showToast(message, type) {
     }, 3000);
 }
 
-function addModule() {
+async function addModule() {
     const name = document.getElementById('module-name').value.trim();
     const year = document.getElementById('year').value.trim();
     const part = document.getElementById('part').value.trim();
@@ -240,7 +240,12 @@ function addModule() {
     const module = { name, year, part, semester: semesterNumber, mark: markNumber, grade };
 
     modules.push(module);
-    localStorage.setItem('modules', JSON.stringify(modules));
+    try {
+        await GradelyticsDB.saveModules(modules);
+    } catch (err) {
+        console.error('Failed to sync module to the cloud:', err);
+        showToast("Module saved locally, but cloud sync failed.", "error");
+    }
     displayModules();
     updateStatistics();
     document.getElementById('module-form').reset();
@@ -264,7 +269,6 @@ function getGradeBadge(grade, mark) {
 }
 
 function displayModules() {
-    modules = JSON.parse(localStorage.getItem('modules') || '[]');
     const moduleTableBody = document.getElementById('module-table-body');
     moduleTableBody.innerHTML = modules.map((module, index) => `
         <tr>
@@ -298,7 +302,7 @@ function editModule(index) {
 
     modal.classList.add('open');
 
-    form.onsubmit = function (e) {
+    form.onsubmit = async function (e) {
         e.preventDefault();
         const newName = document.getElementById('edit-name').value.trim();
         const newYear = document.getElementById('edit-year').value.trim();
@@ -313,7 +317,12 @@ function editModule(index) {
         }
 
         modules[index] = { name: newName, year: newYear, part: newPart, semester: parseInt(newSemester), mark: parseFloat(newMark), grade: newGrade };
-        localStorage.setItem('modules', JSON.stringify(modules));
+        try {
+            await GradelyticsDB.saveModules(modules);
+        } catch (err) {
+            console.error('Failed to sync module to the cloud:', err);
+            showToast("Module saved locally, but cloud sync failed.", "error");
+        }
         displayModules();
         updateStatistics();
         modal.classList.remove('open');
@@ -348,16 +357,24 @@ function deleteAllModules() {
     document.getElementById('confirm-modal').classList.add('open');
 }
 
-document.getElementById('confirm-yes').addEventListener('click', function () {
+document.getElementById('confirm-yes').addEventListener('click', async function () {
     if (pendingDeleteIndex === 'all') {
         modules = [];
-        localStorage.setItem('modules', JSON.stringify(modules));
+        try {
+            await GradelyticsDB.saveModules(modules);
+        } catch (err) {
+            console.error('Failed to sync module deletion to the cloud:', err);
+        }
         displayModules();
         updateStatistics();
         showToast('All modules deleted.', 'success');
     } else if (pendingDeleteIndex !== null) {
         modules.splice(pendingDeleteIndex, 1);
-        localStorage.setItem('modules', JSON.stringify(modules));
+        try {
+            await GradelyticsDB.saveModules(modules);
+        } catch (err) {
+            console.error('Failed to sync module deletion to the cloud:', err);
+        }
         displayModules();
         updateStatistics();
         showToast("Module deleted.", "success");

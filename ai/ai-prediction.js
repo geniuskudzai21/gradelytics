@@ -1,5 +1,5 @@
 async function predictNextSemester() {
-    const modules = JSON.parse(localStorage.getItem('modules') || '[]');
+    const modules = (typeof GradelyticsDB !== 'undefined') ? GradelyticsDB.getModules() : [];
     const resultEl = document.getElementById('prediction-result');
     if (modules.length === 0) {
         resultEl.textContent = 'No academic data found. Add modules in the Input Details section first.';

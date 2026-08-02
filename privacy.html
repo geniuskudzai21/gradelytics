@@ -75,18 +75,22 @@
                 <li><strong>Device Information:</strong> Browser type, operating system, and screen resolution for compatibility purposes</li>
             </ul>
 
-            <h2>2. How We Store Your Data</h2>
-
-            <h3>2.1 Local Browser Storage</h3>
-            <p>The vast majority of your data — including all academic records, achievements, and preferences — is stored exclusively in your web browser's <strong>localStorage</strong>. This means:</p>
+            <h3>2.1 Cloud Storage (account users)</h3>
+            <p>When you create an account, your academic records, achievements, and AI chat history are stored securely in the cloud using <strong>Supabase</strong> (a PostgreSQL-based backend-as-a-service). This means:</p>
             <ul>
-                <li>Your data stays on your device and is never transmitted to or stored on any Gradelytics server</li>
-                <li>We have no access to the academic data you enter into the dashboard</li>
-                <li>Your data persists until you clear your browser data or use the "Delete All" function</li>
-                <li>Your data is not synced across devices or browsers</li>
+                <li>Your data is tied to your account and protected by row-level security — only you can read or modify your own records</li>
+                <li>Your data syncs across all devices and browsers where you sign in</li>
+                <li>You can delete individual modules, clear all data, or clear chat history at any time from the dashboard</li>
             </ul>
 
-            <h3>2.2 AI API Communications</h3>
+            <h3>2.2 Local Browser Storage (no-account users)</h3>
+            <p>If you use the app without an account, your data is stored exclusively in your web browser's <strong>localStorage</strong>. This means:</p>
+            <ul>
+                <li>Your data stays on your device and is not synced across devices</li>
+                <li>Your data persists until you clear your browser data or use the "Delete All" function</li>
+            </ul>
+
+            <h3>2.3 AI API Communications</h3>
             <p>Certain features require sending data to third-party AI APIs for processing:</p>
             <ul>
                 <li><strong>Screenshot Extraction:</strong> When you upload a screenshot, the image is sent to a third-party vision AI model (currently hosted via NVIDIA NIM) for analysis. The image is processed in real-time and is not stored by the AI provider after processing.</li>
@@ -118,15 +122,15 @@
             <ul>
                 <li>All data transmitted between your browser and our servers uses HTTPS encryption</li>
                 <li>AI API communications are encrypted in transit</li>
-                <li>We do not maintain a central database of user academic data</li>
-                <li>Your academic data remains on your device, reducing the risk of centralised data breaches</li>
+                <li>Account data is stored in Supabase, which provides row-level security so each user can only access their own records</li>
+                <li>Authentication is handled by Supabase Auth (password hashing, session management, and optional email confirmation)</li>
             </ul>
             <p>However, no method of electronic transmission or storage is 100% secure. We cannot guarantee the absolute security of your data.</p>
 
             <h2>6. Your Rights and Choices</h2>
             <p>You have the following rights regarding your data:</p>
             <ul>
-                <li><strong>Access:</strong> All your data is stored in your browser and is visible to you at all times within the dashboard</li>
+                <li><strong>Access:</strong> Your data is visible to you at all times within the dashboard</li>
                 <li><strong>Modification:</strong> You can edit any module at any time through the dashboard interface</li>
                 <li><strong>Deletion:</strong> You can delete individual modules or use the "Delete All" function to remove all data at once</li>
                 <li><strong>Export:</strong> You can download all your academic data as a CSV file at any time</li>
@@ -154,7 +158,7 @@
             <p>The Service may contain links to third-party websites or services (such as social media platforms). We are not responsible for the privacy practices or content of those third-party sites. We encourage you to review the privacy policies of any third-party sites you visit.</p>
 
             <h2>12. Data Retention</h2>
-            <p>Since your data is stored in your browser's localStorage, it is retained for as long as you keep it. We do not maintain server-side copies of your academic data. AI API providers may retain anonymised usage logs for a limited period as required by their respective policies.</p>
+            <p>Account data is retained for as long as your account exists. Deleting a module, clearing chat history, or using "Delete All" removes that data from your account. Without an account, data is stored in your browser's localStorage and is retained for as long as you keep it. AI API providers may retain anonymised usage logs for a limited period as required by their respective policies.</p>
 
             <h2>13. Your Consent</h2>
             <p>By using Gradelytics, you consent to this Privacy Policy and agree to the data practices described herein. If you do not agree with this policy, please do not use the Service.</p>

@@ -1,1 +1,4 @@
 .env
+supabase
+README.md
+schema.sql

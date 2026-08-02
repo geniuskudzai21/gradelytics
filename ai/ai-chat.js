@@ -26,6 +26,9 @@ function sendChatMessage() {
 function addChatMessage(role, content) {
     chatMessages.push({ role, content });
     localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(chatMessages));
+    if (window.GradelyticsDB) {
+        GradelyticsDB.addChatMessage(role, content);
+    }
     renderChatMessages();
 }
 
@@ -72,6 +75,9 @@ function clearChat() {
         cleanup();
         chatMessages = [];
         localStorage.removeItem(CHAT_STORAGE_KEY);
+        if (window.GradelyticsDB) {
+            GradelyticsDB.clearChatMessages();
+        }
         renderChatMessages();
         document.getElementById('confirm-modal').classList.remove('open');
     };

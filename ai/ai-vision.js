@@ -71,9 +71,9 @@ async function extractFromScreenshot() {
             { role: 'user', content: `Here is the extracted text from a screenshot of academic results:\n\n${ocrText}\n\nCRITICAL RULES for Part and Semester:\n1. The results are organized hierarchically: Part headings appear first, then Semester headings within each Part, then modules under each Semester.\n2. Parts appear in order (Part 1 first, then Part 2, etc.). Once a new Part heading appears, all following modules belong to that new Part until another Part heading appears.\n3. Within each Part, Semesters appear in order (Semester 1 first, then Semester 2). Once a new Semester heading appears, all following modules belong to that new Semester until another Semester or Part heading appears.\n4. A Part or Semester heading may only appear once at the top of its section — modules listed after it with no new heading still belong to that same Part/Semester.\n5. Track the CURRENT Part and CURRENT Semester as you read through the modules. Assign each module the current Part and Semester values.\n\nExtract ALL module entries and return them as a JSON array. Each entry must have these fields:\n- "name": the course/module name ONLY — strip any course codes, module codes, or alphanumeric prefixes (e.g. "CS101 Intro to Programming" should become "Intro to Programming")\n- "year": the academic year (as text)\n- "part": the current part number (as text)\n- "semester": the current semester number (as a number)\n- "mark": the mark/score (as a number, 0-100)\n- "grade": the classification/grade exactly as shown (one of: "1", "2.1", "2.2", "P", "F")\n\nReturn ONLY a valid JSON array with no other text, no markdown formatting, no code blocks.\nIf you cannot find any modules, return an empty array [].` }
         ]);
 
-        let modules = extractJSONArray(reply) || [];
+        const extracted = extractJSONArray(reply) || [];
 
-        if (!Array.isArray(modules) || modules.length === 0) {
+        if (!Array.isArray(extracted) || extracted.length === 0) {
             showToast('Could not extract any modules from the image. Try a clearer screenshot.', 'error');
             extractBtn.disabled = false;
             extractBtn.innerHTML = 'Extract Results';
@@ -88,10 +88,10 @@ async function extractFromScreenshot() {
             return /^\s*[A-Za-z]{2,5}\s*\d{2,4}[A-Za-z]?\s*$/.test(name.trim());
         }
 
-        const existingModules = JSON.parse(localStorage.getItem('modules') || '[]');
+        const existingModules = (typeof GradelyticsDB !== 'undefined') ? GradelyticsDB.getModules() : [];
 
         const cleaned = [];
-        for (const m of modules) {
+        for (const m of extracted) {
             if (!m.name || !m.year || !m.part || m.semester == null || m.mark == null || !m.grade) continue;
             const rawName = String(m.name).trim();
             if (isOnlyCourseCode(rawName)) continue;
@@ -118,7 +118,11 @@ async function extractFromScreenshot() {
             added++;
         }
 
-        localStorage.setItem('modules', JSON.stringify(existingModules));
+        try {
+            await GradelyticsDB.saveModules(existingModules);
+        } catch (err) {
+            console.error('Failed to sync extracted modules to the cloud:', err);
+        }
         showToast(`Successfully extracted and added ${added} module(s)!`, 'success');
         removeScreenshot();
         displayModules();
