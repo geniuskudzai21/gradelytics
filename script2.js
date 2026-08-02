@@ -5,12 +5,18 @@
 
 const ACHIEVEMENT_UNLOCK_KEY = 'achievementUnlocks';
 
+function achievementStorageKey() {
+    return (window.GradelyticsDB && typeof GradelyticsDB.getCacheKey === 'function')
+        ? GradelyticsDB.getCacheKey(ACHIEVEMENT_UNLOCK_KEY)
+        : ACHIEVEMENT_UNLOCK_KEY;
+}
+
 function getUnlockedState() {
-    return JSON.parse(localStorage.getItem(ACHIEVEMENT_UNLOCK_KEY)) || {};
+    return JSON.parse(localStorage.getItem(achievementStorageKey())) || {};
 }
 
 function saveUnlockedState(state) {
-    localStorage.setItem(ACHIEVEMENT_UNLOCK_KEY, JSON.stringify(state));
+    localStorage.setItem(achievementStorageKey(), JSON.stringify(state));
 }
 
 function markAchievementUnlocked(key) {

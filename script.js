@@ -109,7 +109,9 @@ function updateWelcomeBanner() {
     else if (hour >= 17) greeting = 'Good evening';
 
     const greetingEl = document.getElementById('welcome-greeting');
-    if (greetingEl) greetingEl.textContent = `${greeting}, Genius`;
+    const db = window.GradelyticsDB;
+    const displayName = (db && typeof db.getDisplayName === 'function') ? db.getDisplayName() : 'Genius';
+    if (greetingEl) greetingEl.textContent = `${greeting}, ${displayName}`;
 
     const mods = modules;
     const avgEl = document.getElementById('welcome-avg');

@@ -1,3 +1,9 @@
+function chatStorageKey() {
+    return (window.GradelyticsDB && typeof GradelyticsDB.getCacheKey === 'function')
+        ? GradelyticsDB.getCacheKey(CHAT_STORAGE_KEY)
+        : CHAT_STORAGE_KEY;
+}
+
 function sendChatMessage() {
     const input = document.getElementById('chat-input');
     const message = input.value.trim();
@@ -25,7 +31,7 @@ function sendChatMessage() {
 
 function addChatMessage(role, content) {
     chatMessages.push({ role, content });
-    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(chatMessages));
+    localStorage.setItem(chatStorageKey(), JSON.stringify(chatMessages));
     if (window.GradelyticsDB) {
         GradelyticsDB.addChatMessage(role, content);
     }
@@ -74,7 +80,7 @@ function clearChat() {
     const onYes = () => {
         cleanup();
         chatMessages = [];
-        localStorage.removeItem(CHAT_STORAGE_KEY);
+        localStorage.removeItem(chatStorageKey());
         if (window.GradelyticsDB) {
             GradelyticsDB.clearChatMessages();
         }

@@ -36,6 +36,8 @@
 
     let sb = null;
     let configured = false;
+    let currentDisplayName = 'Genius';
+    let currentUserId = null;
 
     /* ── Client bootstrap ── */
 
@@ -53,6 +55,21 @@
 
     function isConfigured() {
         return configured;
+    }
+
+    /* ── User-scoped cache ──
+       Every localStorage key is namespaced by the signed-in user id so that a
+       different account on the same browser can never read (or re-upload)
+       another user's cached data. When no one is signed in, the shared
+       "pre-account" keys are used for offline/local mode. */
+    function cacheKey(base) {
+        return currentUserId ? base + ':' + currentUserId : base;
+    }
+
+    function clearUserCache() {
+        localStorage.removeItem(cacheKey(LS_MODULES));
+        localStorage.removeItem(cacheKey(LS_CHAT));
+        localStorage.removeItem(cacheKey(LS_ACHIEVEMENTS));
     }
 
     /* ── Auth ── */
@@ -98,12 +115,12 @@
 
     async function loadModules() {
         if (!sb) {
-            return JSON.parse(localStorage.getItem(LS_MODULES) || '[]');
+            return JSON.parse(localStorage.getItem(cacheKey(LS_MODULES)) || '[]');
         }
-        const { data, error } = await sb
-            .from('modules')
-            .select('id, name, year, part, semester, mark, grade')
-            .order('created_at', { ascending: true });
+        const userId = await getUserId();
+        let query = sb.from('modules').select('id, name, year, part, semester, mark, grade');
+        if (userId) query = query.eq('user_id', userId);
+        const { data, error } = await query.order('created_at', { ascending: true });
         if (error) throw error;
 
         const list = (data || []).map(m => ({
@@ -115,20 +132,20 @@
             mark: Number(m.mark),
             grade: m.grade
         }));
-        localStorage.setItem(LS_MODULES, JSON.stringify(list));
+        localStorage.setItem(cacheKey(LS_MODULES), JSON.stringify(list));
         return list;
     }
 
     /* Full reconciliation: delete the user's rows, then reinsert. Simple and
        always correct for the small datasets this app deals with. */
     async function saveModules(list) {
-        localStorage.setItem(LS_MODULES, JSON.stringify(list));
+        localStorage.setItem(cacheKey(LS_MODULES), JSON.stringify(list));
         if (!sb) return;
 
         const userId = await getUserId();
         if (!userId) return;
 
-        const { error: delError } = await sb.from('modules').delete();
+        const { error: delError } = await sb.from('modules').delete().eq('user_id', userId);
         if (delError) throw delError;
 
         if (list.length === 0) return;
@@ -157,15 +174,15 @@
 
     async function loadChatMessages() {
         if (!sb) {
-            return JSON.parse(localStorage.getItem(LS_CHAT) || '[]');
+            return JSON.parse(localStorage.getItem(cacheKey(LS_CHAT)) || '[]');
         }
-        const { data, error } = await sb
-            .from('chat_messages')
-            .select('role, content')
-            .order('created_at', { ascending: true });
+        const userId = await getUserId();
+        let query = sb.from('chat_messages').select('role, content');
+        if (userId) query = query.eq('user_id', userId);
+        const { data, error } = await query.order('created_at', { ascending: true });
         if (error) throw error;
         const list = (data || []).map(m => ({ role: m.role, content: m.content }));
-        localStorage.setItem(LS_CHAT, JSON.stringify(list));
+        localStorage.setItem(cacheKey(LS_CHAT), JSON.stringify(list));
         return list;
     }
 
@@ -189,18 +206,19 @@
 
     async function loadAchievementUnlocks() {
         if (!sb) {
-            return JSON.parse(localStorage.getItem(LS_ACHIEVEMENTS) || '{}');
+            return JSON.parse(localStorage.getItem(cacheKey(LS_ACHIEVEMENTS)) || '{}');
         }
-        const { data, error } = await sb
-            .from('achievement_unlocks')
-            .select('unlock_key, unlocked_at');
+        const userId = await getUserId();
+        let query = sb.from('achievement_unlocks').select('unlock_key, unlocked_at');
+        if (userId) query = query.eq('user_id', userId);
+        const { data, error } = await query.order('created_at', { ascending: true });
         if (error) throw error;
 
         const state = {};
         (data || []).forEach(row => {
             state[row.unlock_key] = row.unlocked_at;
         });
-        localStorage.setItem(LS_ACHIEVEMENTS, JSON.stringify(state));
+        localStorage.setItem(cacheKey(LS_ACHIEVEMENTS), JSON.stringify(state));
         return state;
     }
 
@@ -228,7 +246,7 @@
 
     function getInMemoryModules() {
         if (typeof modules !== 'undefined' && Array.isArray(modules)) return modules;
-        return readLocalArray(LS_MODULES);
+        return readLocalArray(cacheKey(LS_MODULES));
     }
 
     function moduleKey(m) {
@@ -265,7 +283,7 @@
         if (!sb) return;
         const userId = await getUserId();
         if (!userId) return;
-        await sb.from('chat_messages').delete();
+        await sb.from('chat_messages').delete().eq('user_id', userId);
         if (msgs.length) {
             const { error } = await sb.from('chat_messages').insert(
                 msgs.map(m => ({ user_id: userId, role: m.role, content: m.content }))
@@ -294,36 +312,63 @@
     }
 
     function setAuthedUI(session) {
+        currentUserId = session && session.user ? session.user.id : null;
         const email = session && session.user ? session.user.email : '';
         const name = email ? email.split('@')[0] : 'Genius';
+        const parts = name.replace(/[^a-zA-Z0-9 ]/g, '').trim();
+        currentDisplayName = parts ? parts.charAt(0).toUpperCase() + parts.slice(1) : 'Genius';
         const el = document.getElementById('sidebar-username');
-        if (el) el.innerHTML = `<i class='bx bx-user-circle'></i> ${name}`;
+        if (el) el.innerHTML = `<i class='bx bx-user-circle'></i> ${currentDisplayName}`;
         const greeting = document.getElementById('welcome-greeting');
-        if (greeting && email) {
-            const parts = name.replace(/[^a-zA-Z0-9 ]/g, '').trim();
-            if (parts) {
-                const capitalized = parts.charAt(0).toUpperCase() + parts.slice(1);
-                greeting.textContent = greeting.textContent.replace(/Genius$/, capitalized);
-            }
+        if (greeting && currentDisplayName !== 'Genius') {
+            greeting.textContent = greeting.textContent.replace(/,\s*[^,]*$/, '') + `, ${currentDisplayName}`;
         }
+    }
+
+    function getDisplayName() {
+        return currentDisplayName;
     }
 
     async function loadAllFromDB() {
         try {
-            // Capture local-only data BEFORE reading the cloud so we can adopt
-            // it into the account on first sign-in (no data loss on migration).
-            const localMods = readLocalArray(LS_MODULES);
-            const localMsgs = readLocalArray(LS_CHAT);
-            let localUnlocks = {};
-            try {
-                localUnlocks = JSON.parse(localStorage.getItem(LS_ACHIEVEMENTS) || '{}');
-            } catch (e) { /* ignore corrupt cache */ }
-
             const [dbMods, dbMsgs, dbUnlocks] = await Promise.all([
                 loadModules(),
                 loadChatMessages(),
                 loadAchievementUnlocks()
             ]);
+
+            // Read this user's own scoped cache (data from a previous session
+            // on this browser). It can only ever contain this user's rows.
+            let localMods = readLocalArray(cacheKey(LS_MODULES));
+            let localMsgs = readLocalArray(cacheKey(LS_CHAT));
+            let localUnlocks = {};
+            try {
+                localUnlocks = JSON.parse(localStorage.getItem(cacheKey(LS_ACHIEVEMENTS)) || '{}');
+            } catch (e) { /* ignore corrupt cache */ }
+
+            // First sign-in migration: adopt the shared pre-account (offline)
+            // cache ONLY when this account is brand new (no cloud data) and has
+            // no scoped cache yet, then clear the shared keys so they can never
+            // be re-uploaded into another user's account later.
+            const isNewAccount = dbMods.length === 0 && dbMsgs.length === 0 && Object.keys(dbUnlocks).length === 0;
+            const hasUserCache = localMods.length > 0 || localMsgs.length > 0 || Object.keys(localUnlocks).length > 0;
+            if (currentUserId && isNewAccount && !hasUserCache) {
+                const preMods = readLocalArray(LS_MODULES);
+                const preMsgs = readLocalArray(LS_CHAT);
+                let preUnlocks = {};
+                try {
+                    preUnlocks = JSON.parse(localStorage.getItem(LS_ACHIEVEMENTS) || '{}');
+                } catch (e) { /* ignore corrupt cache */ }
+
+                if (preMods.length || preMsgs.length || Object.keys(preUnlocks).length) {
+                    localMods = preMods;
+                    localMsgs = preMsgs;
+                    localUnlocks = preUnlocks;
+                    localStorage.removeItem(LS_MODULES);
+                    localStorage.removeItem(LS_CHAT);
+                    localStorage.removeItem(LS_ACHIEVEMENTS);
+                }
+            }
 
             const mods = mergeModules(dbMods, localMods);
             const msgs = mergeChat(dbMsgs, localMsgs);
@@ -335,13 +380,13 @@
             setInMemoryModules(mods);
 
             setInMemoryChat(msgs);
-            localStorage.setItem(LS_CHAT, JSON.stringify(msgs));
+            localStorage.setItem(cacheKey(LS_CHAT), JSON.stringify(msgs));
 
             if (msgs.length > dbMsgs.length) {
                 await persistChat(msgs);
             }
 
-            localStorage.setItem(LS_ACHIEVEMENTS, JSON.stringify(unlocks));
+            localStorage.setItem(cacheKey(LS_ACHIEVEMENTS), JSON.stringify(unlocks));
             Object.keys(localUnlocks).forEach(key => {
                 if (!dbUnlocks[key]) saveAchievementUnlock(key, localUnlocks[key]);
             });
@@ -354,8 +399,8 @@
     }
 
     function fallbackToLocal() {
-        setInMemoryModules(readLocalArray(LS_MODULES));
-        setInMemoryChat(readLocalArray(LS_CHAT));
+        setInMemoryModules(readLocalArray(cacheKey(LS_MODULES)));
+        setInMemoryChat(readLocalArray(cacheKey(LS_CHAT)));
         rerender();
     }
 
@@ -446,6 +491,8 @@
 
         if (localBtn) {
             localBtn.addEventListener('click', function () {
+                currentDisplayName = 'Genius';
+                currentUserId = null;
                 hideAuthModal();
                 fallbackToLocal();
             });
@@ -484,6 +531,9 @@
                 setAuthedUI(session);
                 loadAllFromDB();
             } else if (event === 'SIGNED_OUT') {
+                currentDisplayName = 'Genius';
+                clearUserCache();
+                currentUserId = null;
                 setInMemoryModules([]);
                 setInMemoryChat([]);
                 showAuthModal();
@@ -510,6 +560,8 @@
         isConfigured: isConfigured,
         getSession: getSession,
         getUserId: getUserId,
+        getDisplayName: getDisplayName,
+        getCacheKey: cacheKey,
         signUp: signUp,
         signIn: signIn,
         signOut: signOut,
