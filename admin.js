@@ -9,6 +9,14 @@
 
     let adminPassword = '';
 
+    function persistPassword() {
+        try { sessionStorage.setItem('gradelytics_admin_password', adminPassword); } catch (e) { /* ignore */ }
+    }
+
+    function clearPassword() {
+        try { sessionStorage.removeItem('gradelytics_admin_password'); } catch (e) { /* ignore */ }
+    }
+
     function statusEl() {
         return document.getElementById('admin-status');
     }
@@ -31,6 +39,7 @@
         const input = document.getElementById('admin-password-input');
         const loginError = document.getElementById('admin-login-error');
         adminPassword = '';
+        clearPassword();
         if (login) login.hidden = false;
         if (content) content.hidden = true;
         if (loginError) loginError.textContent = '';
@@ -57,6 +66,7 @@
             });
             const json = await res.json();
             if (res.status === 401 || res.status === 403) {
+                showLogin();
                 const loginError = document.getElementById('admin-login-error');
                 if (loginError) loginError.textContent = 'Access denied. Invalid admin password.';
                 return;
@@ -68,6 +78,7 @@
             render(json);
             showStatus('');
             showContent();
+            persistPassword();
         } catch (err) {
             showStatus('Could not reach the statistics endpoint. Is the server running?', 'error');
         }
@@ -157,6 +168,14 @@
             });
         }
 
-        showLogin();
+        // If the user already logged in as admin from the app, unlock directly.
+        let stored = null;
+        try { stored = sessionStorage.getItem('gradelytics_admin_password'); } catch (e) { /* ignore */ }
+        if (stored) {
+            adminPassword = stored;
+            load();
+        } else {
+            showLogin();
+        }
     });
 })();

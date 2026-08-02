@@ -104,7 +104,32 @@
         return { user: data.user, error };
     }
 
+    /* Admin emails sign in with the admin password (ADMIN_PASSWORD) and are
+       routed to admin.html. Everyone else falls through to a normal Supabase
+       account sign-in and lands on their user dashboard. */
+    async function loginWithAdminCheck(email, password) {
+        try {
+            const res = await fetch('/api/admin-login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            if (res.ok) {
+                const data = await res.json().catch(() => null);
+                if (data && data.role === 'admin') {
+                    try { sessionStorage.setItem('gradelytics_admin_password', password); } catch (e) { /* ignore */ }
+                    window.location.href = 'admin.html';
+                    return { redirecting: true };
+                }
+            }
+        } catch (err) {
+            // Server unreachable — fall through to a normal Supabase sign-in.
+        }
+        return signIn(email, password);
+    }
+
     async function signOut() {
+        try { sessionStorage.removeItem('gradelytics_admin_password'); } catch (e) { /* ignore */ }
         if (!sb) return;
         await sb.auth.signOut();
     }
@@ -532,9 +557,10 @@
             submitBtn.textContent = mode === 'login' ? 'Signing in...' : 'Creating account...';
             try {
                 const result = mode === 'login'
-                    ? await signIn(email, password)
+                    ? await loginWithAdminCheck(email, password)
                     : await signUp(email, password);
 
+                if (result.redirecting) return;
                 if (result.error) {
                     errorEl.textContent = result.error.message;
                     return;

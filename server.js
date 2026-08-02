@@ -65,6 +65,39 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    if (req.method === 'POST' && req.url === '/api/admin-login') {
+        let body = '';
+        for await (const chunk of req) body += chunk;
+
+        const adminEmails = (process.env.ADMIN_EMAILS || '')
+            .split(',')
+            .map(e => e.trim().toLowerCase())
+            .filter(Boolean);
+        const adminPassword = process.env.ADMIN_PASSWORD || '';
+
+        if (!adminEmails.length || !adminPassword) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ error: 'ADMIN_EMAILS / ADMIN_PASSWORD is not configured.' }));
+        }
+
+        let parsed;
+        try {
+            parsed = JSON.parse(body || '{}');
+        } catch (err) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ error: 'Invalid JSON body.' }));
+        }
+
+        const email = String(parsed.email || '').trim().toLowerCase();
+        const password = String(parsed.password || '');
+        if (adminEmails.includes(email) && password && safeEqual(adminPassword, password)) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ role: 'admin' }));
+        }
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Not an admin account.' }));
+    }
+
     if (req.method === 'POST' && req.url === '/api/delete-account') {
         const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
         const supabaseUrl = process.env.SUPABASE_URL;
@@ -196,7 +229,7 @@ server.listen(PORT, () => {
     console.log(`Gradelytics running at http://localhost:${PORT}`);
     console.log(`NVIDIA_API_KEY: ${process.env.NVIDIA_API_KEY ? 'set' : 'NOT SET — run: set NVIDIA_API_KEY=your_key'}`);
     console.log(`SUPABASE_SERVICE_ROLE_KEY: ${process.env.SUPABASE_SERVICE_ROLE_KEY ? 'set' : 'NOT SET — add it to .env for account deletion'}`);
-    console.log(`ADMIN_PASSWORD: ${process.env.ADMIN_PASSWORD ? 'set' : 'NOT SET — add it to .env for the admin dashboard'}`);
+    console.log(`ADMIN_EMAILS / ADMIN_PASSWORD: ${process.env.ADMIN_EMAILS && process.env.ADMIN_PASSWORD ? 'set' : 'NOT SET — add both to .env for the admin login'}`);
 });
 
 async function fetchJson(url, headers) {
