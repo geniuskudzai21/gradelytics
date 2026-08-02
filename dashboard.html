@@ -44,6 +44,7 @@
             <li><a href="#statistics" class="nav-link"><i class='bx bx-bar-chart'></i>  Statistics</a></li>
             <li><a href="#ai-analytics" class="nav-link"><i class='bx bx-brain'></i>  AI Analytics</a></li>
             <li><a href="#achievements-section" class="nav-link"><i class='bx bx-trophy'></i>  Achievements</a></li>
+            <li><a href="#settings" class="nav-link"><i class='bx bx-cog'></i>  Settings</a></li>
         </ul>
         <div class="sidebar-footer">
             <span class="sidebar-username" id="sidebar-username"><i class='bx bx-user-circle'></i> Genius Kudzai</span>
@@ -423,6 +424,88 @@
                 </div>
             </section>
 
+            <!-- Settings Section -->
+            <section id="settings" class="section">
+                <div class="section-header">
+                    <div>
+                        <span class="section-tag"><i class='bx bx-cog'></i> Account</span>
+                        <h2>Settings</h2>
+                        <p class="section-subtitle">Manage your account and security.</p>
+                    </div>
+                </div>
+                <div class="settings-grid">
+                    <div class="settings-col">
+                        <div class="input-card settings-card">
+                            <div class="settings-card-head">
+                                <i class='bx bx-user-circle'></i>
+                                <div>
+                                    <strong>Profile</strong>
+                                    <small>Your signed-in account details.</small>
+                                </div>
+                            </div>
+                            <div class="settings-row">
+                                <div class="field">
+                                    <label class="field-label">Display Name</label>
+                                    <input type="text" id="settings-display-name" readonly>
+                                </div>
+                                <div class="field">
+                                    <label class="field-label">Email</label>
+                                    <input type="email" id="settings-email" readonly>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="input-card settings-card">
+                            <div class="settings-card-head">
+                                <i class='bx bx-lock-alt'></i>
+                                <div>
+                                    <strong>Change Password</strong>
+                                    <small>Set a new password for your account.</small>
+                                </div>
+                            </div>
+                            <form id="settings-password-form" class="settings-form">
+                                <div class="field">
+                                    <label class="field-label">New Password</label>
+                                    <input type="password" id="settings-new-password" placeholder="At least 6 characters" minlength="6" required autocomplete="new-password">
+                                </div>
+                                <div class="field">
+                                    <label class="field-label">Confirm New Password</label>
+                                    <input type="password" id="settings-confirm-password" placeholder="Repeat your new password" minlength="6" required autocomplete="new-password">
+                                </div>
+                                <p class="settings-msg" id="settings-password-msg"></p>
+                                <button type="submit" id="settings-password-btn" class="btn btn-primary"><i class='bx bx-key'></i> Update Password</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="settings-col">
+                        <div class="input-card settings-card settings-card--danger">
+                            <div class="settings-card-head">
+                                <i class='bx bx-shield-x'></i>
+                                <div>
+                                    <strong>Danger Zone</strong>
+                                    <small>Irreversible account actions.</small>
+                                </div>
+                            </div>
+                            <div class="settings-danger-row">
+                                <div class="settings-danger-text">
+                                    <strong>Sign out</strong>
+                                    <small>End this session on this device.</small>
+                                </div>
+                                <button class="btn btn-outline" id="settings-signout-btn"><i class='bx bx-log-out'></i> Sign Out</button>
+                            </div>
+                            <div class="settings-danger-row">
+                                <div class="settings-danger-text">
+                                    <strong>Delete account</strong>
+                                    <small>Permanently delete your account and all synced data. This cannot be undone.</small>
+                                </div>
+                                <button class="btn btn-danger" id="settings-delete-btn"><i class='bx bx-trash'></i> Delete Account</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
         </main>
 
     <!-- Edit Module Modal -->
@@ -479,6 +562,22 @@
             <div class="modal-actions">
                 <button id="confirm-no" class="btn btn-outline">Cancel</button>
                 <button id="confirm-yes" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Account Confirm Modal -->
+    <div id="settings-confirm-modal" class="modal-overlay">
+        <div class="modal modal--sm">
+            <div class="modal-header">
+                <h3>Delete Account</h3>
+                <button id="settings-confirm-close" class="modal-close"><i class='bx bx-x'></i></button>
+            </div>
+            <p class="confirm-text">This will permanently delete your account and all synced data on every device. This cannot be undone. Continue?</p>
+            <p class="settings-msg" id="settings-confirm-error"></p>
+            <div class="modal-actions">
+                <button id="settings-confirm-no" class="btn btn-outline">Cancel</button>
+                <button id="settings-confirm-yes" class="btn btn-danger">Delete Account</button>
             </div>
         </div>
     </div>

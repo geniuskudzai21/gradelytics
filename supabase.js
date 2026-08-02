@@ -11,6 +11,8 @@
        signUp(email, password)      create a new account
        signIn(email, password)      sign in with email + password
        signOut()                    sign out
+       updatePassword(password)     change the signed-in user's password
+       deleteAccount()              permanently delete the account via /api/delete-account
        onAuthStateChange(cb)        subscribe to auth changes
 
      Data (modules / chat / achievements):
@@ -103,6 +105,34 @@
     async function signOut() {
         if (!sb) return;
         await sb.auth.signOut();
+    }
+
+    async function updatePassword(newPassword) {
+        if (!sb) return { error: { message: 'Supabase is not configured.' } };
+        return sb.auth.updateUser({ password: newPassword });
+    }
+
+    /* Permanently deletes the signed-in user on the server. The anon key can't
+       do this, so we hand the access token to a serverless endpoint that calls
+       the Supabase admin API with the service_role key. */
+    async function deleteAccount() {
+        if (!sb) return { error: { message: 'Supabase is not configured.' } };
+        const { session } = await getSession();
+        if (!session) return { error: { message: 'Not signed in.' } };
+        try {
+            const res = await fetch('/api/delete-account', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + session.access_token
+                }
+            });
+            const data = await res.json();
+            if (!res.ok) return { error: { message: data.error || 'Failed to delete account.' } };
+            return { ok: true };
+        } catch (err) {
+            return { error: { message: err.message || 'Failed to delete account.' } };
+        }
     }
 
     function onAuthStateChange(callback) {
@@ -323,6 +353,10 @@
         if (greeting && currentDisplayName !== 'Genius') {
             greeting.textContent = greeting.textContent.replace(/,\s*[^,]*$/, '') + `, ${currentDisplayName}`;
         }
+        const settingsName = document.getElementById('settings-display-name');
+        if (settingsName) settingsName.value = currentDisplayName;
+        const settingsEmail = document.getElementById('settings-email');
+        if (settingsEmail) settingsEmail.value = email;
     }
 
     function getDisplayName() {
@@ -513,12 +547,124 @@
         });
     }
 
+    function wireSettings() {
+        const passwordForm = document.getElementById('settings-password-form');
+        const signoutBtn = document.getElementById('settings-signout-btn');
+        const deleteBtn = document.getElementById('settings-delete-btn');
+        const modal = document.getElementById('settings-confirm-modal');
+        const closeBtn = document.getElementById('settings-confirm-close');
+        const noBtn = document.getElementById('settings-confirm-no');
+        const yesBtn = document.getElementById('settings-confirm-yes');
+
+        function setMsg(text, isSuccess) {
+            const el = document.getElementById('settings-password-msg');
+            if (!el) return;
+            el.textContent = text;
+            el.classList.toggle('settings-msg--success', !!isSuccess);
+        }
+
+        if (passwordForm) {
+            const newPasswordInput = document.getElementById('settings-new-password');
+            const confirmInput = document.getElementById('settings-confirm-password');
+            const submitBtn = document.getElementById('settings-password-btn');
+            const originalHTML = submitBtn ? submitBtn.innerHTML : '';
+
+            passwordForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                setMsg('', false);
+                if (!sb) {
+                    setMsg('Sign in with an account to change your password.', false);
+                    return;
+                }
+                const newPassword = newPasswordInput.value;
+                if (newPassword.length < 6) {
+                    setMsg('Password must be at least 6 characters.', false);
+                    return;
+                }
+                if (newPassword !== confirmInput.value) {
+                    setMsg('Passwords do not match.', false);
+                    return;
+                }
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Updating...';
+                }
+                try {
+                    const { error } = await updatePassword(newPassword);
+                    if (error) {
+                        setMsg(error.message || 'Failed to update password.', false);
+                    } else {
+                        setMsg('Password updated successfully.', true);
+                        passwordForm.reset();
+                    }
+                } catch (err) {
+                    setMsg(err.message || 'Something went wrong. Try again.', false);
+                } finally {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalHTML;
+                    }
+                }
+            });
+        }
+
+        if (signoutBtn) {
+            signoutBtn.addEventListener('click', async function () {
+                if (!sb) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+                await signOut();
+                showAuthModal();
+                fallbackToLocal();
+            });
+        }
+
+        if (deleteBtn && modal) {
+            const errorEl = document.getElementById('settings-confirm-error');
+
+            function openDeleteModal() {
+                if (errorEl) errorEl.textContent = '';
+                modal.classList.add('open');
+            }
+            function closeDeleteModal() {
+                modal.classList.remove('open');
+            }
+
+            deleteBtn.addEventListener('click', openDeleteModal);
+            if (closeBtn) closeBtn.addEventListener('click', closeDeleteModal);
+            if (noBtn) noBtn.addEventListener('click', closeDeleteModal);
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal) closeDeleteModal();
+            });
+
+            yesBtn.addEventListener('click', async function () {
+                yesBtn.disabled = true;
+                yesBtn.textContent = 'Deleting...';
+                try {
+                    const result = await deleteAccount();
+                    if (result.error) {
+                        if (errorEl) errorEl.textContent = result.error.message;
+                        return;
+                    }
+                    try { await signOut(); } catch (err) { /* already deleted */ }
+                    localStorage.clear();
+                    window.location.href = 'index.html';
+                } finally {
+                    yesBtn.disabled = false;
+                    yesBtn.textContent = 'Delete Account';
+                }
+            });
+        }
+    }
+
     /* ── App bootstrap ── */
 
     async function initApp() {
         const hasConfig = init();
         wireAuthModal();
         wireLogout();
+        wireSettings();
 
         if (!hasConfig) {
             fallbackToLocal();
@@ -565,6 +711,8 @@
         signUp: signUp,
         signIn: signIn,
         signOut: signOut,
+        updatePassword: updatePassword,
+        deleteAccount: deleteAccount,
         onAuthStateChange: onAuthStateChange,
         loadModules: loadModules,
         saveModules: saveModules,
