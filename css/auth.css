@@ -6,9 +6,23 @@
    provides on the dashboard (auth.html does not load style.css).
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* ── Reset & Base (mirrors css/style.css, which auth.html does not load) ── */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
 .auth-body {
     min-height: 100vh;
     margin: 0;
+    font-family: var(--font-body);
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     background:
         radial-gradient(600px 400px at 85% -10%, rgba(var(--color-primary-rgb), 0.14), transparent 60%),
         radial-gradient(500px 360px at -10% 110%, rgba(var(--color-accent-rgb), 0.08), transparent 60%),
