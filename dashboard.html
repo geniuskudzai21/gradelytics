@@ -446,12 +446,16 @@
                             <div class="settings-row">
                                 <div class="field">
                                     <label class="field-label">Display Name</label>
-                                    <input type="text" id="settings-display-name" readonly>
+                                    <input type="text" id="settings-display-name" maxlength="40" autocomplete="off" placeholder="Your display name">
                                 </div>
                                 <div class="field">
                                     <label class="field-label">Email</label>
                                     <input type="email" id="settings-email" readonly>
                                 </div>
+                            </div>
+                            <div class="settings-name-actions">
+                                <p class="settings-msg" id="settings-name-msg"></p>
+                                <button type="button" id="settings-name-save" class="btn btn-primary"><i class='bx bx-save'></i> Save Name</button>
                             </div>
                         </div>
 
@@ -608,7 +612,6 @@
                 <p id="auth-error" class="auth-error"></p>
                 <button type="submit" id="auth-submit" class="btn btn-primary btn-full">Sign In</button>
             </form>
-            <button type="button" id="auth-local" class="auth-local">Use without account <span>(local only)</span></button>
         </div>
     </div>
 
@@ -706,23 +709,6 @@
             font-size: 12.5px;
             color: var(--danger);
             text-align: center;
-        }
-        .auth-local {
-            margin-top: var(--sp-4);
-            width: 100%;
-            border: none;
-            background: transparent;
-            color: var(--text-light);
-            font: 500 12.5px/1 var(--font-body);
-            padding: 8px;
-            cursor: pointer;
-            text-decoration: underline;
-        }
-        .auth-local span {
-            color: var(--muted);
-        }
-        .auth-local:hover {
-            color: var(--ink);
         }
         body.auth-locked .menu-toggle,
         body.auth-locked .sidebar,

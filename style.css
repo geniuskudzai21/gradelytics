@@ -846,6 +846,17 @@ section.active {
     margin-top: 2px;
 }
 
+.settings-name-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+}
+
+.settings-name-actions .btn {
+    flex-shrink: 0;
+}
+
 @media (max-width: 900px) {
     .settings-grid {
         grid-template-columns: 1fr;

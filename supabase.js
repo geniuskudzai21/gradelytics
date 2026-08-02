@@ -12,6 +12,7 @@
        signIn(email, password)      sign in with email + password
        signOut()                    sign out
        updatePassword(password)     change the signed-in user's password
+       updateDisplayName(name)      save a display name to the user's profile
        deleteAccount()              permanently delete the account via /api/delete-account
        onAuthStateChange(cb)        subscribe to auth changes
 
@@ -40,6 +41,7 @@
     let configured = false;
     let currentDisplayName = 'Genius';
     let currentUserId = null;
+    let resetAuthFormMode = null;
 
     /* ── Client bootstrap ── */
 
@@ -110,6 +112,18 @@
     async function updatePassword(newPassword) {
         if (!sb) return { error: { message: 'Supabase is not configured.' } };
         return sb.auth.updateUser({ password: newPassword });
+    }
+
+    async function updateDisplayName(name) {
+        if (!sb) return { error: { message: 'Supabase is not configured.' } };
+        const clean = String(name || '').replace(/[^a-zA-Z0-9 ]/g, '').trim();
+        if (!clean) return { error: { message: 'Display name cannot be empty.' } };
+        const { error } = await sb.auth.updateUser({ data: { display_name: clean } });
+        if (!error) {
+            currentDisplayName = clean;
+            renderDisplayName();
+        }
+        return { error };
     }
 
     /* Permanently deletes the signed-in user on the server. The anon key can't
@@ -341,20 +355,28 @@
         if (typeof prefillWhatIf === 'function') prefillWhatIf();
     }
 
+    function renderDisplayName() {
+        const el = document.getElementById('sidebar-username');
+        if (el) el.innerHTML = `<i class='bx bx-user-circle'></i> ${currentDisplayName}`;
+        const settingsName = document.getElementById('settings-display-name');
+        if (settingsName) settingsName.value = currentDisplayName;
+    }
+
     function setAuthedUI(session) {
         currentUserId = session && session.user ? session.user.id : null;
         const email = session && session.user ? session.user.email : '';
-        const name = email ? email.split('@')[0] : 'Genius';
-        const parts = name.replace(/[^a-zA-Z0-9 ]/g, '').trim();
+        const metaName = session && session.user && session.user.user_metadata
+            ? session.user.user_metadata.display_name
+            : '';
+        const derived = email ? email.split('@')[0] : '';
+        const rawName = (metaName && metaName.trim()) ? metaName : derived;
+        const parts = rawName.replace(/[^a-zA-Z0-9 ]/g, '').trim();
         currentDisplayName = parts ? parts.charAt(0).toUpperCase() + parts.slice(1) : 'Genius';
-        const el = document.getElementById('sidebar-username');
-        if (el) el.innerHTML = `<i class='bx bx-user-circle'></i> ${currentDisplayName}`;
+        renderDisplayName();
         const greeting = document.getElementById('welcome-greeting');
         if (greeting && currentDisplayName !== 'Genius') {
             greeting.textContent = greeting.textContent.replace(/,\s*[^,]*$/, '') + `, ${currentDisplayName}`;
         }
-        const settingsName = document.getElementById('settings-display-name');
-        if (settingsName) settingsName.value = currentDisplayName;
         const settingsEmail = document.getElementById('settings-email');
         if (settingsEmail) settingsEmail.value = email;
     }
@@ -445,6 +467,13 @@
         if (!modal) return;
         modal.style.display = 'flex';
         document.body.classList.add('auth-locked');
+        // Clear any leftover credentials so a signed-out user's login
+        // information is never left visible on the auth form.
+        const emailInput = document.getElementById('auth-email');
+        const passwordInput = document.getElementById('auth-password');
+        if (emailInput) emailInput.value = '';
+        if (passwordInput) passwordInput.value = '';
+        if (typeof resetAuthFormMode === 'function') resetAuthFormMode();
     }
 
     function hideAuthModal() {
@@ -465,11 +494,11 @@
         const submitBtn = document.getElementById('auth-submit');
         const titleEl = document.getElementById('auth-title');
         const subtitleEl = document.getElementById('auth-subtitle');
-        const localBtn = document.getElementById('auth-local');
 
         if (!form) return;
 
         let mode = 'login';
+        resetAuthFormMode = () => setMode('login');
 
         function setMode(next) {
             mode = next;
@@ -522,15 +551,6 @@
                 submitBtn.textContent = mode === 'login' ? 'Sign In' : 'Create Account';
             }
         });
-
-        if (localBtn) {
-            localBtn.addEventListener('click', function () {
-                currentDisplayName = 'Genius';
-                currentUserId = null;
-                hideAuthModal();
-                fallbackToLocal();
-            });
-        }
     }
 
     function wireLogout() {
@@ -561,6 +581,44 @@
             if (!el) return;
             el.textContent = text;
             el.classList.toggle('settings-msg--success', !!isSuccess);
+        }
+
+        const nameInput = document.getElementById('settings-display-name');
+        const nameSaveBtn = document.getElementById('settings-name-save');
+        const nameMsg = document.getElementById('settings-name-msg');
+        if (nameInput && nameSaveBtn) {
+            const originalHTML = nameSaveBtn.innerHTML;
+            nameSaveBtn.addEventListener('click', async function () {
+                const name = nameInput.value.trim();
+                if (nameMsg) {
+                    nameMsg.textContent = '';
+                    nameMsg.classList.remove('settings-msg--success');
+                }
+                if (!sb) {
+                    if (nameMsg) nameMsg.textContent = 'Sign in with an account to change your name.';
+                    return;
+                }
+                if (!name) {
+                    if (nameMsg) nameMsg.textContent = 'Display name cannot be empty.';
+                    return;
+                }
+                nameSaveBtn.disabled = true;
+                nameSaveBtn.textContent = 'Saving...';
+                try {
+                    const { error } = await updateDisplayName(name);
+                    if (error) {
+                        if (nameMsg) nameMsg.textContent = error.message || 'Failed to save name.';
+                    } else if (nameMsg) {
+                        nameMsg.textContent = 'Display name saved.';
+                        nameMsg.classList.add('settings-msg--success');
+                    }
+                } catch (err) {
+                    if (nameMsg) nameMsg.textContent = err.message || 'Something went wrong. Try again.';
+                } finally {
+                    nameSaveBtn.disabled = false;
+                    nameSaveBtn.innerHTML = originalHTML;
+                }
+            });
         }
 
         if (passwordForm) {
@@ -712,6 +770,7 @@
         signIn: signIn,
         signOut: signOut,
         updatePassword: updatePassword,
+        updateDisplayName: updateDisplayName,
         deleteAccount: deleteAccount,
         onAuthStateChange: onAuthStateChange,
         loadModules: loadModules,
