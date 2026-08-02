@@ -25,11 +25,27 @@
             <div class="admin-header-actions">
                 <button class="btn btn-outline" id="admin-refresh"><i class='bx bx-refresh'></i> Refresh</button>
                 <a class="btn btn-outline" href="dashboard.html"><i class='bx bx-arrow-back'></i> Back to App</a>
-                <button class="btn btn-outline" id="admin-signout"><i class='bx bx-log-out'></i> Sign Out</button>
+                <button class="btn btn-outline" id="admin-lock"><i class='bx bx-lock'></i> Lock</button>
             </div>
         </header>
 
         <div id="admin-status" class="admin-status"></div>
+
+        <section id="admin-login" class="admin-login">
+            <div class="admin-login-card">
+                <i class='bx bxs-shield-alt-2 admin-login-icon'></i>
+                <h2>Admin Access</h2>
+                <p>Enter the admin password to view user statistics.</p>
+                <form id="admin-login-form" class="admin-login-form">
+                    <div class="admin-login-field">
+                        <i class='bx bxs-lock-alt'></i>
+                        <input type="password" id="admin-password-input" placeholder="Admin password" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">Unlock</button>
+                </form>
+                <p id="admin-login-error" class="admin-login-error"></p>
+            </div>
+        </section>
 
         <section id="admin-content" hidden>
             <div class="stat-grid">
@@ -83,9 +99,7 @@
         </section>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="supabase-config.js"></script>
     <script src="admin.js"></script>
 </body>
 </html>

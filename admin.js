@@ -1,14 +1,13 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    Gradelytics — Admin dashboard
    Loads aggregate user statistics from /api/admin-stats (server-side, gated by
-   the ADMIN_EMAILS env var) and renders them on the page.
+   the ADMIN_PASSWORD env var) and renders them on the page.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 (function () {
     'use strict';
 
-    const cfg = window.GRADELYTICS_SUPABASE || {};
-    let client = null;
+    let adminPassword = '';
 
     function statusEl() {
         return document.getElementById('admin-status');
@@ -26,33 +25,49 @@
         if (el) el.textContent = value;
     }
 
-    async function load() {
-        showStatus('Loading statistics...');
+    function showLogin() {
+        const login = document.getElementById('admin-login');
         const content = document.getElementById('admin-content');
+        const input = document.getElementById('admin-password-input');
+        const loginError = document.getElementById('admin-login-error');
+        adminPassword = '';
+        if (login) login.hidden = false;
         if (content) content.hidden = true;
-
-        const { data, error } = await client.auth.getSession();
-        if (error || !data.session) {
-            showStatus('You must be signed in to view admin statistics. Sign in on the app first.', 'warn');
-            return;
+        if (loginError) loginError.textContent = '';
+        if (input) {
+            input.value = '';
+            input.focus();
         }
+        showStatus('');
+    }
 
+    function showContent() {
+        const login = document.getElementById('admin-login');
+        const content = document.getElementById('admin-content');
+        if (login) login.hidden = true;
+        if (content) content.hidden = false;
+    }
+
+    async function load() {
+        if (!adminPassword) return;
+        showStatus('Loading statistics...');
         try {
             const res = await fetch('/api/admin-stats', {
-                headers: { 'Authorization': 'Bearer ' + data.session.access_token }
+                headers: { 'Authorization': 'Bearer ' + adminPassword }
             });
             const json = await res.json();
+            if (res.status === 401 || res.status === 403) {
+                const loginError = document.getElementById('admin-login-error');
+                if (loginError) loginError.textContent = 'Access denied. Invalid admin password.';
+                return;
+            }
             if (!res.ok) {
-                if (res.status === 403) {
-                    showStatus('Access denied. Your account is not an admin.', 'error');
-                } else {
-                    showStatus(json.error || 'Failed to load statistics.', 'error');
-                }
+                showStatus(json.error || 'Failed to load statistics.', 'error');
                 return;
             }
             render(json);
             showStatus('');
-            if (content) content.hidden = false;
+            showContent();
         } catch (err) {
             showStatus('Could not reach the statistics endpoint. Is the server running?', 'error');
         }
@@ -125,25 +140,23 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         const refreshBtn = document.getElementById('admin-refresh');
-        const signoutBtn = document.getElementById('admin-signout');
+        const lockBtn = document.getElementById('admin-lock');
+        const form = document.getElementById('admin-login-form');
 
         if (refreshBtn) refreshBtn.addEventListener('click', load);
 
-        if (signoutBtn) {
-            signoutBtn.addEventListener('click', async function () {
-                if (client) {
-                    try { await client.auth.signOut(); } catch (e) { /* ignore */ }
-                }
-                window.location.href = 'dashboard.html';
+        if (lockBtn) lockBtn.addEventListener('click', showLogin);
+
+        if (form) {
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const input = document.getElementById('admin-password-input');
+                if (!input || !input.value) return;
+                adminPassword = input.value;
+                await load();
             });
         }
 
-        if (!cfg.url || !cfg.anonKey || cfg.anonKey.indexOf('YOUR_SUPABASE') !== -1) {
-            showStatus('Admin dashboard is not configured.', 'error');
-            return;
-        }
-
-        client = supabase.createClient(cfg.url, cfg.anonKey);
-        load();
+        showLogin();
     });
 })();

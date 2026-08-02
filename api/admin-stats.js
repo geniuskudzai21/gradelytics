@@ -1,3 +1,5 @@
+import { timingSafeEqual } from 'crypto';
+
 export default async function handler(req, res) {
     if (req.method !== 'GET' && req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -5,32 +7,19 @@ export default async function handler(req, res) {
 
     const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const supabaseUrl = process.env.SUPABASE_URL;
-    const adminEmails = (process.env.ADMIN_EMAILS || '')
-        .split(',')
-        .map(e => e.trim().toLowerCase())
-        .filter(Boolean);
+    const adminPassword = process.env.ADMIN_PASSWORD || '';
 
     if (!serviceRole || !supabaseUrl) {
         return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY is not configured.' });
     }
-    if (adminEmails.length === 0) {
-        return res.status(500).json({ error: 'ADMIN_EMAILS is not configured.' });
+    if (!adminPassword) {
+        return res.status(500).json({ error: 'ADMIN_PASSWORD is not configured.' });
     }
 
     const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    if (!token) {
-        return res.status(401).json({ error: 'Missing access token.' });
-    }
-
-    const claims = decodeToken(token);
-    if (!claims) {
-        return res.status(401).json({ error: 'Invalid access token.' });
-    }
-
-    const email = (claims.email || '').toLowerCase();
-    if (!email || !adminEmails.includes(email)) {
-        return res.status(403).json({ error: 'Access denied. You are not an admin.' });
+    const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!provided || !safeEqual(adminPassword, provided)) {
+        return res.status(403).json({ error: 'Access denied. Invalid admin password.' });
     }
 
     try {
@@ -101,16 +90,11 @@ function countBy(list, key) {
     return map;
 }
 
-function decodeToken(token) {
-    const payload = token.split('.')[1];
-    if (!payload) return null;
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-    try {
-        return JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
-    } catch (e) {
-        return null;
-    }
+function safeEqual(a, b) {
+    const bufA = Buffer.from(String(a));
+    const bufB = Buffer.from(String(b));
+    if (bufA.length !== bufB.length) return false;
+    return timingSafeEqual(bufA, bufB);
 }
 
 function signupsByDay(rows, days) {

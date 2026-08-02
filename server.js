@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 // Load .env
 const envPath = path.join(__dirname, '.env');
@@ -106,37 +107,22 @@ const server = http.createServer(async (req, res) => {
     if ((req.method === 'GET' || req.method === 'POST') && req.url === '/api/admin-stats') {
         const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
         const supabaseUrl = process.env.SUPABASE_URL;
-        const adminEmails = (process.env.ADMIN_EMAILS || '')
-            .split(',')
-            .map(e => e.trim().toLowerCase())
-            .filter(Boolean);
+        const adminPassword = process.env.ADMIN_PASSWORD || '';
 
         if (!serviceRole || !supabaseUrl) {
             res.writeHead(500, { 'Content-Type': 'application/json' });
             return res.end(JSON.stringify({ error: 'SUPABASE_SERVICE_ROLE_KEY is not configured.' }));
         }
-        if (adminEmails.length === 0) {
+        if (!adminPassword) {
             res.writeHead(500, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ error: 'ADMIN_EMAILS is not configured.' }));
+            return res.end(JSON.stringify({ error: 'ADMIN_PASSWORD is not configured.' }));
         }
 
         const authHeader = req.headers.authorization || '';
-        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-        if (!token) {
-            res.writeHead(401, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ error: 'Missing access token.' }));
-        }
-
-        const claims = decodeTokenClaims(token);
-        if (!claims) {
-            res.writeHead(401, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ error: 'Invalid access token.' }));
-        }
-
-        const email = (claims.email || '').toLowerCase();
-        if (!email || !adminEmails.includes(email)) {
+        const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+        if (!provided || !safeEqual(adminPassword, provided)) {
             res.writeHead(403, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ error: 'Access denied. You are not an admin.' }));
+            return res.end(JSON.stringify({ error: 'Access denied. Invalid admin password.' }));
         }
 
         try {
@@ -210,7 +196,7 @@ server.listen(PORT, () => {
     console.log(`Gradelytics running at http://localhost:${PORT}`);
     console.log(`NVIDIA_API_KEY: ${process.env.NVIDIA_API_KEY ? 'set' : 'NOT SET — run: set NVIDIA_API_KEY=your_key'}`);
     console.log(`SUPABASE_SERVICE_ROLE_KEY: ${process.env.SUPABASE_SERVICE_ROLE_KEY ? 'set' : 'NOT SET — add it to .env for account deletion'}`);
-    console.log(`ADMIN_EMAILS: ${process.env.ADMIN_EMAILS ? 'set' : 'NOT SET — add it to .env for the admin dashboard'}`);
+    console.log(`ADMIN_PASSWORD: ${process.env.ADMIN_PASSWORD ? 'set' : 'NOT SET — add it to .env for the admin dashboard'}`);
 });
 
 async function fetchJson(url, headers) {
@@ -226,6 +212,13 @@ function countBy(list, key) {
         map.set(k, (map.get(k) || 0) + 1);
     });
     return map;
+}
+
+function safeEqual(a, b) {
+    const bufA = Buffer.from(String(a));
+    const bufB = Buffer.from(String(b));
+    if (bufA.length !== bufB.length) return false;
+    return crypto.timingSafeEqual(bufA, bufB);
 }
 
 function signupsByDay(rows, days) {
