@@ -27,7 +27,7 @@
                     <a href="#features" class="header-nav-link">Features</a>
                     <a href="#faq" class="header-nav-link">FAQ</a>
                 </nav>
-                <a href="dashboard.html" class="btn btn-primary btn-sm">Get Started Free</a>
+                <a href="dashboard.html" class="btn btn-primary btn-sm">Open Dashboard</a>
             </div>
             <button class="header-mobile-toggle" id="header-mobile-toggle" aria-label="Menu">
                 <i class='bx bx-menu'></i>
@@ -37,13 +37,15 @@
             <a href="#how-it-works" class="header-mobile-link">How It Works</a>
             <a href="#features" class="header-mobile-link">Features</a>
             <a href="#faq" class="header-mobile-link">FAQ</a>
-            <a href="dashboard.html" class="header-mobile-link" style="color:var(--color-primary)">Get Started Free</a>
+            <a href="dashboard.html" class="header-mobile-link" style="color:var(--color-primary)">Open Dashboard</a>
         </div>
     </header>
 
     <!-- ── Hero ── -->
     <section class="hero">
         <div class="hero-glow"></div>
+        <div class="hero-orb hero-orb--1"></div>
+        <div class="hero-orb hero-orb--2"></div>
         <div class="hero-inner">
             <div class="hero-text">
                 <div class="hero-badge"><i class='bx bx-bolt-circle'></i> AI-Powered Academic Tracking</div>
@@ -51,15 +53,15 @@
                 <p class="hero-sub">Upload your results, and Gradelytics instantly tracks your grades, predicts your next semester average, and tells you exactly what to work on — all powered by AI.</p>
                 <div class="hero-ctas">
                     <a href="dashboard.html" class="btn btn-primary btn-lg">
-                        <i class='bx bx-rocket'></i> Launch Dashboard
+                        <i class='bx bx-rocket'></i> Open Dashboard
                     </a>
                     <a href="#how-it-works" class="btn btn-outline btn-lg">
                         See how it works <i class='bx bx-right-arrow-alt'></i>
                     </a>
                 </div>
                 <div class="hero-proof">
-                    <span class="hero-proof-item"><i class='bx bx-check-circle'></i> Free sign-up</span>
-                    <span class="hero-proof-item"><i class='bx bx-check-circle'></i> 100% free</span>
+                    <span class="hero-proof-item"><i class='bx bx-check-circle'></i> Free account</span>
+                    <span class="hero-proof-item"><i class='bx bx-check-circle'></i> No credit card required</span>
                     <span class="hero-proof-item"><i class='bx bx-check-circle'></i> Cloud sync across devices</span>
                 </div>
             </div>
@@ -126,7 +128,7 @@
         <div class="container">
             <div class="proof-bar-inner">
                 <div class="proof-stat">
-                    <span class="proof-stat-value">12</span>
+                    <span class="proof-stat-value" data-count="11">11</span>
                     <span class="proof-stat-label">Features</span>
                 </div>
                 <div class="proof-divider"></div>
@@ -141,7 +143,7 @@
                 </div>
                 <div class="proof-divider"></div>
                 <div class="proof-stat">
-                    <span class="proof-stat-value">100%</span>
+                    <span class="proof-stat-value" data-count="100" data-suffix="%">100%</span>
                     <span class="proof-stat-label">Free forever</span>
                 </div>
             </div>
@@ -270,11 +272,6 @@
                     <p>Earn gold, silver, and bronze medals plus improvement awards as you hit new academic milestones.</p>
                 </div>
                 <div class="feature-card feature-card--large">
-                    <div class="feature-icon" style="background:rgba(244,63,94,0.15);color:#f43f5e"><i class='bx bx-download'></i></div>
-                    <h3>CSV Export</h3>
-                    <p>Download your complete academic record as a CSV file anytime — share it, back it up, or keep it for yourself.</p>
-                </div>
-                <div class="feature-card feature-card--large">
                     <div class="feature-icon" style="background:rgba(168,85,247,0.15);color:#a855f7"><i class='bx bx-cloud-upload'></i></div>
                     <h3>Cloud Sync &amp; Backup</h3>
                     <p>Sign in once and your grades, chat history, and achievements follow you to any device — secured with row-level protection.</p>
@@ -291,7 +288,7 @@
                 <h2>Ready to know exactly where you stand?</h2>
                 <p>Stop guessing. Start tracking. It takes 30 seconds to get started.</p>
                 <a href="dashboard.html" class="btn btn-primary btn-lg">
-                    <i class='bx bx-rocket'></i> Launch Gradelytics
+                    <i class='bx bx-rocket'></i> Open Dashboard
                 </a>
             </div>
         </div>
@@ -379,9 +376,40 @@
             });
         }, { threshold: 0.1 });
 
-        document.querySelectorAll('.feature-card, .step-card, .pain-card, .faq-item, .proof-stat').forEach(el => {
+        document.querySelectorAll('.feature-card, .step-card, .pain-card, .faq-item').forEach((el, i) => {
+            if (el.classList.contains('feature-card') || el.classList.contains('pain-card')) {
+                el.style.transitionDelay = (i % 3) * 80 + 'ms';
+            }
             observer.observe(el);
         });
+
+        const animateCount = (el) => {
+            const target = parseInt(el.dataset.count, 10);
+            const suffix = el.dataset.suffix || '';
+            const duration = 1300;
+            const start = performance.now();
+            const tick = (now) => {
+                const p = Math.min((now - start) / duration, 1);
+                el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3))) + suffix;
+                if (p < 1) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        };
+
+        const counters = document.querySelectorAll('[data-count]');
+        if ('IntersectionObserver' in window) {
+            const countObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        animateCount(entry.target);
+                        countObserver.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.4 });
+            counters.forEach(el => countObserver.observe(el));
+        } else {
+            counters.forEach(el => el.textContent = el.dataset.count + (el.dataset.suffix || ''));
+        }
     </script>
 </body>
 </html>
