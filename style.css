@@ -349,7 +349,6 @@ header.scrolled {
     flex-shrink: 0;
 }
 
-.sidebar-admin,
 .sidebar-logout {
     background: none;
     border: none;
@@ -363,11 +362,6 @@ header.scrolled {
     flex-shrink: 0;
 }
 
-.sidebar-admin {
-    text-decoration: none;
-}
-
-.sidebar-admin:hover,
 .sidebar-logout:hover {
     color: var(--chrome-text);
     opacity: 1;
