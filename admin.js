@@ -372,8 +372,8 @@
                 e.preventDefault();
                 const view = link.dataset.view;
                 switchView(view);
-                if (view === 'users' && !stats) loadUsers();
-                if (view === 'overview' && !stats) loadOverview();
+                if (view === 'users') loadUsers();
+                if (view === 'overview') loadOverview();
             });
         });
 
@@ -382,7 +382,7 @@
                 e.preventDefault();
                 const view = el.dataset.goto;
                 switchView(view);
-                if (view === 'users' && !stats) loadUsers();
+                if (view === 'users') loadUsers();
             });
         });
 
