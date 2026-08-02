@@ -612,6 +612,8 @@
                 <p id="auth-error" class="auth-error"></p>
                 <button type="submit" id="auth-submit" class="btn btn-primary btn-full">Sign In</button>
             </form>
+            <div class="auth-divider"><span>or continue with</span></div>
+            <button type="button" id="auth-google" class="btn btn-google"><i class='bx bxl-google'></i> Continue with Google</button>
         </div>
     </div>
 
@@ -709,6 +711,46 @@
             font-size: 12.5px;
             color: var(--danger);
             text-align: center;
+        }
+        .auth-divider {
+            display: flex;
+            align-items: center;
+            gap: var(--sp-3);
+            margin: var(--sp-4) 0 var(--sp-3);
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .auth-divider::before,
+        .auth-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+        .btn-google {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--sp-2);
+            padding: 11px 12px;
+            background: var(--surface);
+            color: var(--ink);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font: 600 13px/1 var(--font-body);
+            cursor: pointer;
+            transition: border-color var(--duration-fast), background var(--duration-fast);
+        }
+        .btn-google:hover {
+            border-color: var(--primary);
+            background: var(--primary-muted);
+        }
+        .btn-google i {
+            font-size: 18px;
+            color: #4285F4;
         }
         body.auth-locked .menu-toggle,
         body.auth-locked .sidebar,
