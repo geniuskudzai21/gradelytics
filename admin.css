@@ -253,7 +253,7 @@ button {
 
 .stat-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: var(--sp-4);
 }
 
@@ -329,6 +329,74 @@ button {
 .chart-wrap {
     position: relative;
     height: 240px;
+}
+
+.chart-wrap--doughnut {
+    height: 220px;
+}
+
+/* ── Insights ── */
+
+.insight-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-5);
+    align-items: start;
+}
+
+.insight-empty {
+    margin: 0;
+    font-size: 13px;
+    color: var(--muted);
+    padding: var(--sp-3) 0;
+}
+
+.top-modules {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+}
+
+.top-module-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+}
+
+.top-module-name {
+    flex: 0 0 38%;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.top-module-track {
+    flex: 1;
+    height: 8px;
+    border-radius: var(--radius-pill);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+
+.top-module-track span {
+    display: block;
+    height: 100%;
+    border-radius: var(--radius-pill);
+    background: var(--primary);
+    transition: width var(--duration-base) var(--ease-out);
+}
+
+.top-module-count {
+    flex: 0 0 auto;
+    min-width: 28px;
+    text-align: right;
+    font: 600 12px/1 var(--font-heading);
+    color: var(--muted);
 }
 
 /* ── Search ── */
@@ -724,6 +792,9 @@ button {
     }
     .detail-stats {
         grid-template-columns: repeat(2, 1fr);
+    }
+    .insight-grid {
+        grid-template-columns: 1fr;
     }
 }
 

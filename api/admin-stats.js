@@ -37,9 +37,9 @@ export default async function handler(req, res) {
         const users = usersData.users || (usersData.data && usersData.data.users) || [];
 
         const [modules, chat, unlocks] = await Promise.all([
-            fetchRows(`${base}/rest/v1/modules?select=user_id`, headers),
+            fetchRows(`${base}/rest/v1/modules?select=user_id,name,mark,grade`, headers),
             fetchRows(`${base}/rest/v1/chat_messages?select=user_id`, headers),
-            fetchRows(`${base}/rest/v1/achievement_unlocks?select=user_id`, headers)
+            fetchRows(`${base}/rest/v1/achievement_unlocks?select=user_id,unlock_key`, headers)
         ]);
 
         const modCount = countBy(modules, 'user_id');
@@ -63,13 +63,50 @@ export default async function handler(req, res) {
             };
         });
 
+        // Performance & engagement insights
+        const marks = modules.filter(m => m.mark != null && Number(m.mark) >= 0).map(m => Number(m.mark));
+        const overallAverage = marks.length
+            ? +(marks.reduce((s, x) => s + x, 0) / marks.length).toFixed(1)
+            : null;
+
+        const gradeDistribution = {};
+        modules.forEach(m => {
+            if (m.grade) gradeDistribution[String(m.grade)] = (gradeDistribution[String(m.grade)] || 0) + 1;
+        });
+        const gradeEntries = Object.entries(gradeDistribution).sort((a, b) => b[1] - a[1]);
+        const mostCommonGrade = gradeEntries.length ? gradeEntries[0][0] : null;
+
+        const moduleCounts = {};
+        modules.forEach(m => {
+            const name = String(m.name || '').trim();
+            if (name) moduleCounts[name] = (moduleCounts[name] || 0) + 1;
+        });
+        const topModules = Object.entries(moduleCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([name, count]) => ({ name, count }));
+
+        const achievementBreakdown = {};
+        unlocks.forEach(u => {
+            const key = u.unlock_key || 'other';
+            achievementBreakdown[key] = (achievementBreakdown[key] || 0) + 1;
+        });
+
+        const activeCount = rows.filter(r => r.active).length;
+
         res.status(200).json({
             totalUsers: rows.length,
-            activeUsers: rows.filter(r => r.active).length,
+            activeUsers: activeCount,
             totalModules: modules.length,
             totalChatMessages: chat.length,
             totalAchievements: unlocks.length,
             signupsByDay: signupsByDay(rows, 30),
+            overallAverage,
+            mostCommonGrade,
+            gradeDistribution,
+            topModules,
+            achievementBreakdown,
+            avgMessagesPerActiveUser: activeCount ? +(chat.length / activeCount).toFixed(1) : 0,
             users: rows
         });
     } catch (error) {

@@ -12,11 +12,45 @@
     let stats = null;
     let currentUserId = null;
 
+    // Apply the theme the app persists so light/dark stays consistent.
+    try {
+        const savedTheme = localStorage.getItem('gradelytics-theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    } catch (e) { /* ignore */ }
+
     const ACHIEVEMENT_LABELS = {
         gold: 'Gold',
         silver: 'Silver',
         bronze: 'Bronze'
     };
+
+    const GRADE_COLORS = {
+        'A': '#22A64C',
+        'B': '#1D6FE0',
+        'C': '#F0A83D',
+        'D': '#C07A20',
+        'E': '#DC2626',
+        'F': '#9CA3AF'
+    };
+
+    const GRADE_PALETTE = ['#22A64C', '#1D6FE0', '#F0A83D', '#C07A20', '#DC2626', '#14C9AE', '#8B5CF6', '#EC4899', '#6366F1', '#8B95A3'];
+
+    function isDark() {
+        return document.documentElement.getAttribute('data-theme') === 'dark';
+    }
+
+    function chartTextColor() {
+        return isDark() ? '#9CA3AF' : '#505768';
+    }
+
+    function chartGridColor() {
+        return isDark() ? 'rgba(255,255,255,0.08)' : 'rgba(30,30,46,0.10)';
+    }
+
+    function gradeColor(g, index) {
+        const mapped = GRADE_COLORS[String(g || '').toUpperCase()];
+        return mapped || GRADE_PALETTE[index % GRADE_PALETTE.length];
+    }
 
     /* ── Helpers ── */
 
@@ -108,7 +142,12 @@
             setText('stat-modules', stats.totalModules);
             setText('stat-chat', stats.totalChatMessages);
             setText('stat-achievements', stats.totalAchievements);
+            setText('stat-average', stats.overallAverage == null ? '\u2014' : stats.overallAverage + '%');
+            setText('stat-grade', stats.mostCommonGrade || '\u2014');
+            setText('stat-msg-active', stats.avgMessagesPerActiveUser || '0');
             renderChart(stats.signupsByDay || []);
+            renderGradeChart(stats.gradeDistribution || {});
+            renderTopModules(stats.topModules || []);
             renderOverviewUsers((stats.users || [])
                 .slice()
                 .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
@@ -303,6 +342,7 @@
     /* ── Chart ── */
 
     let chart = null;
+    let gradeChart = null;
 
     function renderChart(rows) {
         const canvas = document.getElementById('admin-chart');
@@ -324,9 +364,71 @@
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    y: { beginAtZero: true, ticks: { precision: 0 } }
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: chartTextColor() }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: { precision: 0, color: chartTextColor() },
+                        grid: { color: chartGridColor() }
+                    }
                 }
             }
+        });
+    }
+
+    function renderGradeChart(dist) {
+        const canvas = document.getElementById('admin-grade-chart');
+        const emptyEl = document.getElementById('grade-chart-empty');
+        if (!canvas) return;
+        if (gradeChart) { gradeChart.destroy(); gradeChart = null; }
+        const entries = Object.entries(dist).sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+        if (emptyEl) emptyEl.hidden = entries.length > 0;
+        canvas.hidden = entries.length === 0;
+        if (!entries.length) return;
+        gradeChart = new Chart(canvas.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: entries.map(e => e[0]),
+                datasets: [{
+                    data: entries.map(e => e[1]),
+                    backgroundColor: entries.map((e, i) => gradeColor(e[0], i)),
+                    borderWidth: 0,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '62%',
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { color: chartTextColor(), boxWidth: 12, padding: 12, font: { family: 'Inter', size: 12 } }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderTopModules(list) {
+        const container = document.getElementById('admin-top-modules');
+        const emptyEl = document.getElementById('top-modules-empty');
+        if (!container) return;
+        container.innerHTML = '';
+        if (emptyEl) emptyEl.hidden = list.length > 0;
+        if (!list.length) return;
+        const max = Math.max.apply(null, list.map(m => m.count)) || 1;
+        list.forEach(m => {
+            const row = document.createElement('div');
+            row.className = 'top-module-row';
+            const pct = Math.max(4, Math.round((m.count / max) * 100));
+            row.innerHTML =
+                '<span class="top-module-name" title="' + escapeHtml(m.name) + '">' + escapeHtml(m.name) + '</span>' +
+                '<div class="top-module-track"><span style="width:' + pct + '%"></span></div>' +
+                '<span class="top-module-count">' + m.count + '</span>';
+            container.appendChild(row);
         });
     }
 
@@ -494,6 +596,27 @@
             try { sessionStorage.removeItem('gradelytics_admin_password'); } catch (e) { /* ignore */ }
             window.location.href = 'dashboard.html';
         });
+
+        /* Theme toggle — mirrors the app's light/dark switcher */
+        const themeToggle = document.getElementById('admin-theme-toggle');
+        if (themeToggle) {
+            const updateThemeToggle = function () {
+                const dark = isDark();
+                const icon = themeToggle.querySelector('i');
+                const label = themeToggle.querySelector('span');
+                if (icon) icon.className = dark ? 'bx bx-sun' : 'bx bx-moon';
+                if (label) label.textContent = dark ? 'Light mode' : 'Dark mode';
+            };
+            updateThemeToggle();
+            themeToggle.addEventListener('click', function () {
+                const next = isDark() ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                try { localStorage.setItem('gradelytics-theme', next); } catch (e) { /* ignore */ }
+                updateThemeToggle();
+                renderChart(stats ? stats.signupsByDay || [] : []);
+                renderGradeChart(stats ? stats.gradeDistribution || {} : {});
+            });
+        }
 
         switchView('overview');
         loadOverview();
