@@ -757,6 +757,21 @@ button {
         height: auto;
         border-right: none;
         border-bottom: 1px solid var(--border);
+        padding: var(--sp-3);
+        gap: var(--sp-3);
+    }
+    .sidebar-brand {
+        padding: var(--sp-1) var(--sp-2) var(--sp-2);
+    }
+    .sidebar-nav {
+        flex-direction: row;
+        overflow-x: auto;
+        gap: var(--sp-2);
+    }
+    .sidebar-link {
+        flex: 1 0 auto;
+        justify-content: center;
+        white-space: nowrap;
     }
     .admin-shell {
         flex-direction: column;
@@ -764,6 +779,20 @@ button {
     .content {
         margin-left: 0;
         padding: var(--sp-4);
+    }
+    .admin-panel {
+        padding: var(--sp-4);
+    }
+    .panel-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .search-box {
+        min-width: 0;
+        width: 100%;
+    }
+    .modal-backdrop {
+        padding: var(--sp-3);
     }
     .stat-grid {
         grid-template-columns: 1fr;
