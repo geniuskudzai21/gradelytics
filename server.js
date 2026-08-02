@@ -95,7 +95,7 @@ const server = http.createServer(async (req, res) => {
             return res.end(JSON.stringify({ role: 'admin' }));
         }
         res.writeHead(403, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Not an admin account.' }));
+        return res.end(JSON.stringify({ error: 'Not an admin account.' }));
     }
 
     if (req.method === 'POST' && req.url === '/api/delete-account') {
@@ -362,6 +362,7 @@ const server = http.createServer(async (req, res) => {
     const contentType = MIME[ext] || 'application/octet-stream';
 
     fs.readFile(filePath, (err, data) => {
+        if (res.headersSent) return;
         if (err) {
             res.writeHead(404, { 'Content-Type': 'text/html' });
             return res.end('<h1>404 Not Found</h1>');
