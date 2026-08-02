@@ -259,7 +259,7 @@ const server = http.createServer(async (req, res) => {
                 const [modules, chat, achievements] = await Promise.all([
                     fetchJson(`${base}/rest/v1/modules?select=id,name,year,part,semester,mark,grade&user_id=eq.${encodeURIComponent(id)}&order=year.asc,semester.asc,id.asc`, headers),
                     fetchJson(`${base}/rest/v1/chat_messages?select=id,role,content,created_at&user_id=eq.${encodeURIComponent(id)}&order=created_at.asc,id.asc`, headers),
-                    fetchJson(`${base}/rest/v1/achievement_unlocks?select=unlock_key,unlocked_at&user_id=eq.${encodeURIComponent(id)}&order=created_at.asc`, headers)
+                    fetchJson(`${base}/rest/v1/achievement_unlocks?select=unlock_key,unlocked_at&user_id=eq.${encodeURIComponent(id)}&order=unlocked_at.asc`, headers)
                 ]);
 
                 res.writeHead(200, { 'Content-Type': 'application/json' });

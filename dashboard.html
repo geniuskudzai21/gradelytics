@@ -624,6 +624,7 @@
                     <div class="auth-input-wrap">
                         <i class='bx bxs-lock-alt'></i>
                         <input type="password" id="auth-password" placeholder="At least 6 characters" minlength="6" required autocomplete="current-password">
+                        <button type="button" class="password-toggle" id="auth-password-toggle" tabindex="-1" aria-label="Show password"><i class='bx bx-show'></i></button>
                     </div>
                 </div>
                 <p id="auth-error" class="auth-error"></p>
@@ -728,11 +729,38 @@
             outline: none;
             transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
         }
+        .auth-field input#auth-password {
+            padding-right: 36px;
+        }
         .auth-field input:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 3px var(--primary-glow);
         }
         .auth-input-wrap:focus-within i {
+            color: var(--primary);
+        }
+        .password-toggle {
+            position: absolute;
+            top: 50%;
+            right: 4px;
+            transform: translateY(-50%);
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--muted);
+            font-size: 16px;
+            cursor: pointer;
+            padding: 0;
+        }
+        .password-toggle:hover {
+            color: var(--ink);
+        }
+        .password-toggle:active i {
             color: var(--primary);
         }
         .auth-error {

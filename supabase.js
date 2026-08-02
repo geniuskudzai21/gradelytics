@@ -280,7 +280,7 @@
         const userId = await getUserId();
         let query = sb.from('achievement_unlocks').select('unlock_key, unlocked_at');
         if (userId) query = query.eq('user_id', userId);
-        const { data, error } = await query.order('created_at', { ascending: true });
+        const { data, error } = await query.order('unlocked_at', { ascending: true });
         if (error) throw error;
 
         const state = {};
@@ -519,8 +519,20 @@
         const submitBtn = document.getElementById('auth-submit');
         const titleEl = document.getElementById('auth-title');
         const subtitleEl = document.getElementById('auth-subtitle');
+        const pwToggle = document.getElementById('auth-password-toggle');
 
         if (!form) return;
+
+        if (pwToggle) {
+            const icon = pwToggle.querySelector('i');
+            pwToggle.addEventListener('click', () => {
+                const show = passwordInput.type === 'password';
+                passwordInput.type = show ? 'text' : 'password';
+                if (icon) icon.className = show ? 'bx bx-hide' : 'bx bx-show';
+                pwToggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+                passwordInput.focus();
+            });
+        }
 
         let mode = 'login';
         resetAuthFormMode = () => setMode('login');
