@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>Admin — Gradelytics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="variables.css">
+    <link rel="stylesheet" href="admin.css">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+</head>
+<body>
+    <div class="admin-shell">
+        <header class="admin-header">
+            <div class="admin-brand">
+                <img src="images/logo.png" alt="Gradelytics" class="admin-logo">
+                <div>
+                    <h1>Admin Dashboard</h1>
+                    <p>User statistics across the app</p>
+                </div>
+            </div>
+            <div class="admin-header-actions">
+                <button class="btn btn-outline" id="admin-refresh"><i class='bx bx-refresh'></i> Refresh</button>
+                <a class="btn btn-outline" href="dashboard.html"><i class='bx bx-arrow-back'></i> Back to App</a>
+                <button class="btn btn-outline" id="admin-signout"><i class='bx bx-log-out'></i> Sign Out</button>
+            </div>
+        </header>
+
+        <div id="admin-status" class="admin-status"></div>
+
+        <section id="admin-content" hidden>
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <span class="stat-label">Total Users</span>
+                    <strong id="stat-users">&ndash;</strong>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Active Users</span>
+                    <strong id="stat-active">&ndash;</strong>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Modules</span>
+                    <strong id="stat-modules">&ndash;</strong>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Chat Messages</span>
+                    <strong id="stat-chat">&ndash;</strong>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Achievements</span>
+                    <strong id="stat-achievements">&ndash;</strong>
+                </div>
+            </div>
+
+            <div class="admin-panel">
+                <h2><i class='bx bx-line-chart'></i> New signups &mdash; last 30 days</h2>
+                <div class="chart-wrap">
+                    <canvas id="admin-chart"></canvas>
+                </div>
+            </div>
+
+            <div class="admin-panel">
+                <h2><i class='bx bx-table'></i> Users</h2>
+                <div class="table-wrap">
+                    <table id="admin-users-table">
+                        <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>Joined</th>
+                                <th>Modules</th>
+                                <th>Chat</th>
+                                <th>Achievements</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="supabase-config.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>

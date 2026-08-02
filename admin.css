@@ -1,0 +1,239 @@
+/* ═══════════════════════════════════════════════════════
+   Gradelytics — Admin Dashboard
+   ═══════════════════════════════════════════════════════ */
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-body);
+    background: var(--surface);
+    color: var(--text);
+    min-height: 100vh;
+}
+
+a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.admin-shell {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: var(--sp-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-6);
+}
+
+.admin-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    flex-wrap: wrap;
+}
+
+.admin-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+}
+
+.admin-logo {
+    height: 40px;
+}
+
+.admin-brand h1 {
+    font-family: var(--font-heading);
+    font-size: 22px;
+    margin: 0 0 2px;
+    color: var(--ink);
+}
+
+.admin-brand p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.admin-header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    padding: 9px 14px;
+    font: 600 13px/1 var(--font-body);
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast);
+}
+
+.btn-outline {
+    background: var(--surface-alt);
+    color: var(--text-light);
+    border-color: var(--border);
+}
+
+.btn-outline:hover {
+    border-color: var(--primary);
+    color: var(--ink);
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);
+}
+
+.admin-status {
+    padding: var(--sp-3) var(--sp-4);
+    border-radius: var(--radius-md);
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    font-size: 14px;
+    color: var(--text-light);
+}
+
+.admin-status--error {
+    border-color: var(--danger);
+    color: var(--danger);
+    background: var(--danger-bg);
+}
+
+.admin-status--warn {
+    border-color: var(--gold);
+    color: var(--bronze);
+    background: var(--gold-bg);
+}
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--sp-4);
+}
+
+.stat-card {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+}
+
+.stat-label {
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+}
+
+.stat-card strong {
+    font-size: 32px;
+    font-family: var(--font-heading);
+    color: var(--ink);
+}
+
+.admin-panel {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-6);
+}
+
+.admin-panel h2 {
+    font-family: var(--font-heading);
+    font-size: 16px;
+    margin: 0 0 var(--sp-4);
+    color: var(--ink);
+}
+
+.chart-wrap {
+    position: relative;
+    height: 240px;
+}
+
+.table-wrap {
+    overflow-x: auto;
+}
+
+#admin-users-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+#admin-users-table th,
+#admin-users-table td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+#admin-users-table th {
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+}
+
+#admin-users-table tr:hover td {
+    background: var(--primary-muted);
+}
+
+.badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--surface);
+    color: var(--muted);
+    border: 1px solid var(--border);
+}
+
+.badge--active {
+    color: var(--color-growth);
+    background: var(--color-growth-muted);
+    border-color: transparent;
+}
+
+@media (max-width: 900px) {
+    .stat-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 520px) {
+    .admin-shell {
+        padding: var(--sp-4);
+    }
+    .stat-grid {
+        grid-template-columns: 1fr;
+    }
+}
