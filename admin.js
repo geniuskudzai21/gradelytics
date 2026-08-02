@@ -125,9 +125,7 @@
             setText('stat-active', stats.activeUsers);
             setText('stat-modules', stats.totalModules);
             setText('stat-chat', stats.totalChatMessages);
-            setText('stat-achievements', stats.totalAchievements);
             setText('stat-average', stats.overallAverage == null ? '\u2014' : stats.overallAverage + '%');
-            setText('stat-grade', stats.mostCommonGrade || '\u2014');
             setText('stat-msg-active', stats.avgMessagesPerActiveUser || '0');
             renderChart(stats.signupsByDay || []);
             renderOverviewUsers((stats.users || [])
