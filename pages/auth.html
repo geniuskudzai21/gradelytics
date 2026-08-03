@@ -19,6 +19,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../js/supabase-config.js" defer></script>
     <script src="../js/supabase.js" defer></script>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0A0C10">
+    <link rel="apple-touch-icon" href="/images/icons/icon-192.png">
 </head>
 <body class="auth-body">
 
@@ -71,5 +74,14 @@
         </div>
     </div>
 
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/sw.js').catch(function (err) {
+                    console.error('Service Worker registration failed:', err);
+                });
+            });
+        }
+    </script>
 </body>
 </html>

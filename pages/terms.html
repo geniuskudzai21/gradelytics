@@ -29,6 +29,9 @@
         @media (max-width: 768px) { .legal-inner { padding: 0 16px; } }
         @media (max-width: 480px) { .legal-inner { padding: 0 12px; } .legal-page { padding: 100px 0 60px; } }
     </style>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0A0C10">
+    <link rel="apple-touch-icon" href="/images/icons/icon-192.png">
 </head>
 <body>
 
@@ -207,6 +210,15 @@
                 document.getElementById('header-mobile-nav')?.classList.remove('open');
             });
         });
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/sw.js').catch(function (err) {
+                    console.error('Service Worker registration failed:', err);
+                });
+            });
+        }
     </script>
 </body>
 </html>

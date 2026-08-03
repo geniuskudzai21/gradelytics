@@ -11,6 +11,9 @@
     <link rel="stylesheet" href="../css/variables.css">
     <link rel="stylesheet" href="../css/admin.css">
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0A0C10">
+    <link rel="apple-touch-icon" href="/images/icons/icon-192.png">
 </head>
 <body>
     <div class="admin-shell">
@@ -268,5 +271,14 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="../js/admin.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/sw.js').catch(function (err) {
+                    console.error('Service Worker registration failed:', err);
+                });
+            });
+        }
+    </script>
 </body>
 </html>

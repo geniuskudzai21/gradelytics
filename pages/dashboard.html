@@ -33,6 +33,9 @@
     <script src="../ai/ai-prediction.js" defer></script>
     <script src="../ai/ai-chat.js" defer></script>
     <script src="../ai/ai-analytics.js" defer></script>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0A0C10">
+    <link rel="apple-touch-icon" href="/images/icons/icon-192.png">
 
 </head>
 <body>
@@ -595,5 +598,14 @@
     
 
     <script src="../js/script.js" defer></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/sw.js').catch(function (err) {
+                    console.error('Service Worker registration failed:', err);
+                });
+            });
+        }
+    </script>
 </body>
 </html>
