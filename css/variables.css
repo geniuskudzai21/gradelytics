@@ -48,9 +48,9 @@
   --bronze-bg:      rgba(192, 122, 32, 0.10);
 
   /* ── Text ── */
-  --text:           #1E1E2E;
-  --text-light:     #3A3F4B;
-  --muted:          #505768;
+  --text:           #0F1217;
+  --text-light:     #23272F;
+  --muted:          #3C434F;
   --border:         #A0A8B4;
   --border-focus:   var(--color-primary);
 

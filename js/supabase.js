@@ -484,6 +484,14 @@
         rerender();
     }
 
+    /* ── Reveal the app once auth state is known. The dashboard hides itself
+       with `html.auth-gate body { visibility: hidden; }` until this runs so an
+       unauthenticated visitor never sees a flash of the dashboard before being
+       redirected to the auth page. ── */
+    function revealApp() {
+        document.documentElement.classList.remove('auth-gate');
+    }
+
     /* ── Auth page UI (pages/auth.html) ── */
 
     function redirectAfterLogin() {
@@ -755,7 +763,10 @@
         }
 
         if (!hasConfig) {
-            if (!isAuthPage) fallbackToLocal();
+            if (!isAuthPage) {
+                fallbackToLocal();
+                revealApp();
+            }
             return;
         }
 
@@ -766,6 +777,7 @@
                 } else {
                     setAuthedUI(session);
                     loadAllFromDB();
+                    revealApp();
                 }
             } else if (event === 'SIGNED_OUT') {
                 currentDisplayName = 'Genius';
@@ -787,6 +799,7 @@
             } else {
                 setAuthedUI(session);
                 await loadAllFromDB();
+                revealApp();
             }
         } else if (!isAuthPage) {
             window.location.href = 'auth.html';

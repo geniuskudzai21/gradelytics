@@ -3,6 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        html.auth-gate body { visibility: hidden; }
+    </style>
+    <script>
+        document.documentElement.classList.add('auth-gate');
+        setTimeout(function () { document.documentElement.classList.remove('auth-gate'); }, 3000);
+    </script>
     <meta name="description" content="Gradelytics helps students track, analyze, and visualize academic performance with AI-powered insights.">
     <title>Gradelytics</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">

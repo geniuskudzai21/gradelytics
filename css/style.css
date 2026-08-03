@@ -368,6 +368,46 @@ header.scrolled {
     background: rgba(var(--color-ink-rgb), 0.06);
 }
 
+/* Light mode: black sidebar font */
+[data-theme="light"] .sidebar {
+    color: #000;
+}
+
+[data-theme="light"] .sidebar-menu li a {
+    color: #000;
+    opacity: 0.8;
+}
+
+[data-theme="light"] .sidebar-menu li a:hover {
+    color: #000;
+    opacity: 1;
+}
+
+[data-theme="light"] .sidebar-menu li a.active {
+    color: #fff;
+    opacity: 1;
+}
+
+[data-theme="light"] .sidebar-username {
+    color: #000;
+    opacity: 0.8;
+}
+
+[data-theme="light"] .sidebar-username i {
+    color: #000;
+    opacity: 0.5;
+}
+
+[data-theme="light"] .sidebar-logout {
+    color: #000;
+    opacity: 0.6;
+}
+
+[data-theme="light"] .sidebar-logout:hover {
+    color: #000;
+    opacity: 1;
+}
+
 /* ═══════════════════════════════════════════════════════
    Main
    ═══════════════════════════════════════════════════════ */
