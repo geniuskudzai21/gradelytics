@@ -1,3 +1,38 @@
+const EXTRACTION_PROMPT = `You are an academic results extraction engine. Extract EVERY module visible in this screenshot and return them as a JSON array.
+
+Return ONLY valid JSON using EXACTLY this schema:
+[
+  {
+    "name": "",
+    "year": "",
+    "part": "",
+    "semester": 1,
+    "mark": 0,
+    "grade": ""
+  }
+]
+
+RULES:
+1. Return ONLY JSON. Do not use Markdown, no code fences, no explanations.
+2. Extract every visible module. Do not omit any.
+3. Never invent data. Only use values that are actually visible in the image.
+4. Preserve marks exactly as shown (as a number, 0-100).
+5. Preserve grades exactly as shown (e.g. "1", "2.1", "2.2", "P", "F").
+6. If a value is unreadable, use null for that field.
+7. "name": the course/module name ONLY — strip any course codes, module codes, or alphanumeric prefixes (e.g. "CS101 Intro to Programming" should become "Intro to Programming").
+8. "year": the academic year (as text).
+9. "part": the part number (as text).
+10. "semester": the semester number (as a number).
+
+Part and Semester hierarchy:
+- The results are organized hierarchically: Part headings appear first, then Semester headings within each Part, then modules under each Semester.
+- Parts appear in order (Part 1 first, then Part 2, etc.). Once a new Part heading appears, all following modules belong to that new Part until another Part heading appears.
+- Within each Part, Semesters appear in order (Semester 1 first, then Semester 2). Once a new Semester heading appears, all following modules belong to that new Semester until another Semester or Part heading appears.
+- A Part or Semester heading may only appear once at the top of its section — modules listed after it with no new heading still belong to that same Part/Semester.
+- Track the CURRENT Part and CURRENT Semester as you read through the modules. Assign each module the current Part and Semester values.
+
+If you cannot find any modules, return an empty array [].`;
+
 function handleScreenshot(file) {
     const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
     if (!validTypes.includes(file.type)) {
@@ -9,8 +44,14 @@ function handleScreenshot(file) {
         return;
     }
     const reader = new FileReader();
-    reader.onload = function (e) {
-        screenshotBase64 = e.target.result;
+    reader.onload = async function (e) {
+        let processed = e.target.result;
+        try {
+            processed = await preprocessScreenshot(processed);
+        } catch (err) {
+            console.warn('Image preprocessing failed, using original:', err);
+        }
+        screenshotBase64 = processed;
         const preview = document.getElementById('screenshot-preview');
         const img = document.getElementById('screenshot-img');
         const extractBtn = document.getElementById('extract-btn');
@@ -23,6 +64,39 @@ function handleScreenshot(file) {
         if (status) status.textContent = '';
     };
     reader.readAsDataURL(file);
+}
+
+function preprocessScreenshot(dataURL, maxWidth = 1800) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = function () {
+            try {
+                let width = img.width;
+                let height = img.height;
+                if (width > maxWidth) {
+                    const scale = maxWidth / width;
+                    width = maxWidth;
+                    height = Math.round(height * scale);
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, width, height);
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', 0.9));
+            } catch (err) {
+                reject(err);
+            }
+        };
+        img.onerror = function () {
+            reject(new Error('Could not load image for preprocessing.'));
+        };
+        img.src = dataURL;
+    });
 }
 
 function removeScreenshot() {
@@ -46,29 +120,14 @@ async function extractFromScreenshot() {
     extractBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i> Extracting...';
 
     try {
-        const ocrText = await callAIVision([
+        const reply = await callAIVision([
             {
                 role: 'user',
                 content: [
-                    {
-                        type: 'text',
-                        text: 'Transcribe ALL text visible in this image exactly as it appears, preserving the structure, spacing, and section headers. Do not summarize or omit anything.'
-                    },
+                    { type: 'text', text: EXTRACTION_PROMPT },
                     dataURLtoContent(screenshotBase64)
                 ]
             }
-        ]);
-
-        if (!ocrText || !ocrText.trim()) {
-            showToast('Could not read any text from the image. Try a clearer screenshot.', 'error');
-            extractBtn.disabled = false;
-            extractBtn.innerHTML = 'Extract Results';
-            return;
-        }
-
-        const reply = await callAI([
-            { role: 'system', content: 'You extract structured module data from OCR text of academic results. Return ONLY a valid JSON array, no other text.' },
-            { role: 'user', content: `Here is the extracted text from a screenshot of academic results:\n\n${ocrText}\n\nCRITICAL RULES for Part and Semester:\n1. The results are organized hierarchically: Part headings appear first, then Semester headings within each Part, then modules under each Semester.\n2. Parts appear in order (Part 1 first, then Part 2, etc.). Once a new Part heading appears, all following modules belong to that new Part until another Part heading appears.\n3. Within each Part, Semesters appear in order (Semester 1 first, then Semester 2). Once a new Semester heading appears, all following modules belong to that new Semester until another Semester or Part heading appears.\n4. A Part or Semester heading may only appear once at the top of its section — modules listed after it with no new heading still belong to that same Part/Semester.\n5. Track the CURRENT Part and CURRENT Semester as you read through the modules. Assign each module the current Part and Semester values.\n\nExtract ALL module entries and return them as a JSON array. Each entry must have these fields:\n- "name": the course/module name ONLY — strip any course codes, module codes, or alphanumeric prefixes (e.g. "CS101 Intro to Programming" should become "Intro to Programming")\n- "year": the academic year (as text)\n- "part": the current part number (as text)\n- "semester": the current semester number (as a number)\n- "mark": the mark/score (as a number, 0-100)\n- "grade": the classification/grade exactly as shown (one of: "1", "2.1", "2.2", "P", "F")\n\nReturn ONLY a valid JSON array with no other text, no markdown formatting, no code blocks.\nIf you cannot find any modules, return an empty array [].` }
         ]);
 
         const extracted = extractJSONArray(reply) || [];
