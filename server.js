@@ -35,6 +35,19 @@ const server = http.createServer(async (req, res) => {
         try {
             const parsed = JSON.parse(body);
             const isVision = parsed.requestType === 'vision';
+            delete parsed.requestType;
+
+            if (isVision && process.env.GEMINI_API_KEY && process.env.GOOGLE_MODEL) {
+                const apiRes = await proxyToGemini(parsed, {
+                    apiKey: process.env.GEMINI_API_KEY,
+                    model: process.env.GOOGLE_MODEL
+                });
+                const text = await apiRes.text();
+                res.writeHead(apiRes.status, { 'Content-Type': 'application/json' });
+                res.end(text);
+                return;
+            }
+
             const modelEnv = isVision ? process.env.VISION_MODEL : process.env.AI_MODEL;
             const apiKey = isVision
                 ? (process.env.NVIDIA_VISION_API_KEY || process.env.NVIDIA_API_KEY)
@@ -44,7 +57,6 @@ const server = http.createServer(async (req, res) => {
                 return res.end(JSON.stringify({ error: 'NVIDIA_API_KEY not set.' }));
             }
             if (modelEnv) parsed.model = modelEnv;
-            delete parsed.requestType;
 
             const apiRes = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
                 method: 'POST',
@@ -419,6 +431,76 @@ async function fetchJson(url, headers) {
     const res = await fetch(url, { headers });
     if (!res.ok) throw new Error('Request failed: ' + res.status + ' ' + url);
     return res.json();
+}
+
+function parseDataURL(dataUrl) {
+    const match = /^data:([^;,]+);base64,(.+)$/.exec(String(dataUrl || ''));
+    if (!match) return null;
+    return { mime: match[1], base64: match[2] };
+}
+
+async function proxyToGemini(payload, { apiKey, model }) {
+    const contents = [];
+    const systemParts = [];
+
+    for (const msg of payload.messages || []) {
+        if (msg.role === 'system') {
+            if (typeof msg.content === 'string') systemParts.push({ text: msg.content });
+            continue;
+        }
+        const role = msg.role === 'assistant' ? 'model' : 'user';
+        const parts = [];
+        if (typeof msg.content === 'string') {
+            parts.push({ text: msg.content });
+        } else if (Array.isArray(msg.content)) {
+            for (const part of msg.content) {
+                if (part.type === 'text') {
+                    parts.push({ text: part.text });
+                } else if (part.type === 'image_url') {
+                    const url = typeof part.image_url === 'string' ? part.image_url : (part.image_url && part.image_url.url);
+                    const img = parseDataURL(url);
+                    if (img) parts.push({ inline_data: { mime_type: img.mime, data: img.base64 } });
+                }
+            }
+        }
+        if (parts.length) contents.push({ role, parts });
+    }
+
+    const generationConfig = {};
+    if (payload.temperature != null) generationConfig.temperature = payload.temperature;
+    if (payload.max_tokens) generationConfig.maxOutputTokens = payload.max_tokens;
+
+    const geminiBody = {};
+    if (systemParts.length) geminiBody.systemInstruction = { parts: systemParts };
+    geminiBody.contents = contents;
+    if (Object.keys(generationConfig).length) geminiBody.generationConfig = generationConfig;
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
+        },
+        body: JSON.stringify(geminiBody)
+    });
+
+    if (!res.ok) {
+        const errText = await res.text();
+        return new Response(JSON.stringify({ error: `Gemini API error (${res.status}): ${errText}` }), {
+            status: res.status,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    const data = await res.json();
+    const parts = (data.candidates && data.candidates[0] && data.candidates[0].content)
+        ? (data.candidates[0].content.parts || [])
+        : [];
+    const content = parts.map(p => p.text || '').join('');
+    return new Response(JSON.stringify({ choices: [{ message: { content } }] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+    });
 }
 
 function countBy(list, key) {
