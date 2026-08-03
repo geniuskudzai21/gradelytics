@@ -254,7 +254,10 @@ async function addModule() {
     showToast("Module added successfully!", "success");
 }
 
-document.getElementById('add-module-btn').addEventListener('click', addModule);
+document.getElementById('module-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    addModule();
+});
 
 function getGradeBadge(grade, mark) {
     const map = {
