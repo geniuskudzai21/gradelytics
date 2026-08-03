@@ -786,6 +786,7 @@ body {
     .hero-float { display: none; }
     .hero-ctas { flex-wrap: nowrap; }
     .hero-ctas .btn { flex: 1 1 0; justify-content: center; }
+    .hero-ctas .btn-primary { border: 1.5px solid transparent; }
     .hero-proof { flex-direction: column; gap: var(--sp-2); }
 
     .pain-grid { grid-template-columns: 1fr; }
@@ -815,7 +816,8 @@ body {
     .proof-bar-inner { gap: var(--sp-5); }
     .proof-divider { display: none; }
     .hero-ctas { flex-direction: column; }
-    .hero-ctas .btn { width: 100%; }
+    .hero-ctas .btn { flex: 0 0 auto; width: 100%; }
+    .hero-ctas .btn-primary { border: 1.5px solid transparent; }
     .hero-sub { font-size: 15px; }
 }
 
