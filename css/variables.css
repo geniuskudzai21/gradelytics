@@ -17,9 +17,9 @@
   --color-ink:        #1E1E2E;
   --color-ink-rgb:    30, 30, 46;
 
-  --color-gold:       #F0A83D;
-  --color-gold-rgb:   240, 168, 61;
-  --color-gold-muted: rgba(240, 168, 61, 0.10);
+  --color-gold:       #B8860B;
+  --color-gold-rgb:   184, 134, 11;
+  --color-gold-muted: rgba(184, 134, 11, 0.10);
 
   --color-surface:    #C8CDD3;
   --color-surface-alt:#B8BEC6;
@@ -106,6 +106,9 @@
 [data-theme="dark"] {
   --color-surface:    #1A1D21;
   --color-surface-alt:#14171A;
+
+  --color-gold:       #F0A83D;
+  --color-gold-rgb:   240, 168, 61;
 
   --ink:              #E2E5EA;
   --surface:          #1A1D21;

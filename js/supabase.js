@@ -36,6 +36,9 @@
     const LS_MODULES = 'modules';
     const LS_CHAT = 'ai_chat_messages';
     const LS_ACHIEVEMENTS = 'achievementUnlocks';
+    /* Scoped flag set when the user wipes every module, so a failed/empty
+       cloud delete can never resurrect those rows on a later refresh. */
+    const LS_MODULES_TOMBSTONE = 'modules_cleared';
 
     let sb = null;
     let configured = false;
@@ -81,6 +84,7 @@
         localStorage.removeItem(cacheKey(LS_MODULES));
         localStorage.removeItem(cacheKey(LS_CHAT));
         localStorage.removeItem(cacheKey(LS_ACHIEVEMENTS));
+        localStorage.removeItem(cacheKey(LS_MODULES_TOMBSTONE));
     }
 
     /* ── Auth ── */
@@ -254,9 +258,11 @@
 
     /* Full reconciliation: delete the user's rows, then reinsert. Simple and
        always correct for the small datasets this app deals with. The in-memory
-       list is updated immediately; the scoped cache is only mirrored for
-       offline fallback. Returns { synced, error } — callers must surface a
-       failed cloud write instead of pretending the delete/add succeeded. */
+       list is updated immediately; the scoped cache is mirrored so a refresh
+       never loses data while the cloud is unreachable, and wiping every module
+       leaves a tombstone so deleted rows can't be resurrected by a stale
+       cloud. Returns { synced, error } — callers must surface a failed cloud
+       write instead of pretending the delete/add succeeded. */
     async function saveModules(list) {
         syncVersion++;
         const seen = new Set();
@@ -267,6 +273,14 @@
             return true;
         });
         setInMemoryModules(cleaned);
+
+        if (cleaned.length === 0) {
+            // User wiped every module — record it so a failed/empty cloud
+            // delete can never restore these rows on a later refresh.
+            localStorage.setItem(cacheKey(LS_MODULES_TOMBSTONE), '1');
+        } else {
+            localStorage.removeItem(cacheKey(LS_MODULES_TOMBSTONE));
+        }
 
         if (!sb) {
             localStorage.setItem(cacheKey(LS_MODULES), JSON.stringify(cleaned));
@@ -477,15 +491,57 @@
             // so bail instead of painting stale data over the screen.
             if (syncVersion !== versionAtStart) return;
 
-            // Signed in — the cloud is the single source of truth. The scoped
-            // local cache is ONLY mirrored for offline fallback; it is never
-            // merged back in, so rows the user deleted in the cloud cannot
-            // resurrect on the next refresh.
-            setInMemoryModules(dbMods);
-            setInMemoryChat(dbMsgs);
-            localStorage.setItem(cacheKey(LS_MODULES), JSON.stringify(dbMods));
-            localStorage.setItem(cacheKey(LS_CHAT), JSON.stringify(dbMsgs));
-            localStorage.setItem(cacheKey(LS_ACHIEVEMENTS), JSON.stringify(dbUnlocks));
+            // A wipe tombstone means the user deliberately deleted every module
+            // on this device. Never let a failed/empty cloud delete resurrect
+            // those rows — keep the list empty and re-attempt the cloud
+            // cleanup so the tombstones clear once the backend catches up.
+            const wiped = localStorage.getItem(cacheKey(LS_MODULES_TOMBSTONE)) === '1';
+
+            let mods = dbMods;
+            if (wiped) {
+                mods = [];
+                try {
+                    const userId = await getUserId();
+                    if (userId) {
+                        const { error: delErr } = await sb.from('modules').delete().eq('user_id', userId);
+                        const { error: achErr } = await sb.from('achievement_unlocks').delete().eq('user_id', userId);
+                        if (!delErr && !achErr) localStorage.removeItem(cacheKey(LS_MODULES_TOMBSTONE));
+                    }
+                } catch (e) { /* heal is best-effort */ }
+            } else if (mods.length === 0) {
+                // Cloud is empty but this device has data (offline, or earlier
+                // cloud writes never landed). Keep the local copy so a refresh
+                // can never wipe the user's marks, and push it up best-effort.
+                const localMods = readLocalArray(cacheKey(LS_MODULES));
+                if (localMods.length > 0) {
+                    mods = localMods;
+                    saveModules(localMods);
+                }
+            }
+
+            let msgs = dbMsgs;
+            if (msgs.length === 0) {
+                const localMsgs = readLocalArray(cacheKey(LS_CHAT));
+                if (localMsgs.length > 0) msgs = localMsgs;
+            }
+
+            let unlocks = dbUnlocks;
+            if (!Object.keys(unlocks).length) {
+                let localUnlocks = {};
+                try {
+                    localUnlocks = JSON.parse(localStorage.getItem(cacheKey(LS_ACHIEVEMENTS)) || '{}');
+                } catch (e) { /* ignore corrupt cache */ }
+                if (Object.keys(localUnlocks).length) {
+                    unlocks = localUnlocks;
+                    Object.keys(localUnlocks).forEach(key => saveAchievementUnlock(key, localUnlocks[key]));
+                }
+            }
+
+            setInMemoryModules(mods);
+            setInMemoryChat(msgs);
+            localStorage.setItem(cacheKey(LS_MODULES), JSON.stringify(mods));
+            localStorage.setItem(cacheKey(LS_CHAT), JSON.stringify(msgs));
+            localStorage.setItem(cacheKey(LS_ACHIEVEMENTS), JSON.stringify(unlocks));
 
             rerender();
         } catch (err) {
