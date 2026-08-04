@@ -110,6 +110,26 @@ const server = http.createServer(async (req, res) => {
         return res.end(JSON.stringify({ error: 'Not an admin account.' }));
     }
 
+    if (req.method === 'POST' && req.url === '/api/is-admin') {
+        const adminEmails = (process.env.ADMIN_EMAILS || '')
+            .split(',')
+            .map(e => e.trim().toLowerCase())
+            .filter(Boolean);
+
+        const authHeader = req.headers.authorization || '';
+        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+        let email = null;
+        if (token) {
+            const claims = decodeTokenClaims(token);
+            if (claims && claims.email) email = String(claims.email).toLowerCase();
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ isAdmin: !!(email && adminEmails.includes(email)) }));
+        return;
+    }
+
     if (req.method === 'POST' && req.url === '/api/delete-account') {
         const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
         const supabaseUrl = process.env.SUPABASE_URL;

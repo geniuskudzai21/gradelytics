@@ -41,6 +41,8 @@
     let configured = false;
     let currentDisplayName = 'Genius';
     let currentUserId = null;
+    let adminPromptActive = false;
+    let authRedirectHandled = false;
 
     /* ── Client bootstrap ── */
 
@@ -103,10 +105,28 @@
         return { user: data.user, error };
     }
 
+    /* Google OAuth — redirects to Google, then back to this same page. The
+       session is picked up from the URL by supabase-js on load and
+       redirectAfterLogin() sends the user to the dashboard. The returned
+       redirectTo URL must be added to Supabase → Authentication → URL
+       Configuration → Redirect URLs. */
+    async function signInWithGoogle() {
+        if (!sb) return { error: { message: 'Supabase is not configured.' } };
+        const redirectTo = window.location.origin + window.location.pathname;
+        const { data, error } = await sb.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo }
+        });
+        return { data, error };
+    }
+
     /* Admin emails sign in with the admin password (ADMIN_PASSWORD) and are
        routed to admin.html. Everyone else falls through to a normal Supabase
-       account sign-in and lands on their user dashboard. */
-    async function loginWithAdminCheck(email, password) {
+       account sign-in and lands on their user dashboard. When `opts.adminOnly`
+       is set (Google sign-in for an admin email), a wrong password shows an
+       error instead of falling through to the regular password sign-in. */
+    async function loginWithAdminCheck(email, password, opts) {
+        opts = opts || {};
         try {
             const res = await fetch('/api/admin-login', {
                 method: 'POST',
@@ -123,6 +143,9 @@
             }
         } catch (err) {
             // Server unreachable — fall through to a normal Supabase sign-in.
+        }
+        if (opts.adminOnly) {
+            return { error: { message: 'Incorrect admin password.' } };
         }
         return signIn(email, password);
     }
@@ -191,7 +214,7 @@
         const { data, error } = await query.order('created_at', { ascending: true });
         if (error) throw error;
 
-        const list = (data || []).map(m => ({
+        return (data || []).map(m => ({
             id: m.id,
             name: m.name,
             year: m.year,
@@ -200,31 +223,52 @@
             mark: Number(m.mark),
             grade: m.grade
         }));
-        localStorage.setItem(cacheKey(LS_MODULES), JSON.stringify(list));
-        return list;
+    }
+
+    /* Normalise a module before it is written anywhere: coerce semester to a
+       whole number, clamp mark to 0–100, strip whitespace. Returns null for
+       rows that can't be stored (NaN marks, missing fields) so a single bad
+       row — e.g. an AI extraction — can never fail the whole cloud sync. */
+    function sanitizeModule(m) {
+        const name = String(m.name == null ? '' : m.name).trim();
+        const year = String(m.year == null ? '' : m.year).trim();
+        const part = String(m.part == null ? '' : m.part).trim();
+        const semester = Math.round(Number(m.semester));
+        const mark = Math.min(100, Math.max(0, Number(m.mark)));
+        const grade = String(m.grade == null ? '' : m.grade).trim();
+        if (!name || !year || !part || !Number.isFinite(semester) || !Number.isFinite(mark) || !grade) {
+            return null;
+        }
+        const clean = { name, year, part, semester, mark, grade };
+        if (m && m.id != null) clean.id = m.id;
+        return clean;
     }
 
     /* Full reconciliation: delete the user's rows, then reinsert. Simple and
-       always correct for the small datasets this app deals with. */
+       always correct for the small datasets this app deals with. The scoped
+       cache and in-memory list are kept in sync with the cleaned rows so the
+       data survives a refresh even if the cloud write fails. */
     async function saveModules(list) {
-        localStorage.setItem(cacheKey(LS_MODULES), JSON.stringify(list));
-        if (!sb) return;
+        const cleaned = list.map(sanitizeModule).filter(Boolean);
+        localStorage.setItem(cacheKey(LS_MODULES), JSON.stringify(cleaned));
+        setInMemoryModules(cleaned);
 
+        if (!sb) return;
         const userId = await getUserId();
         if (!userId) return;
 
         const { error: delError } = await sb.from('modules').delete().eq('user_id', userId);
         if (delError) throw delError;
 
-        if (list.length === 0) return;
+        if (cleaned.length === 0) return;
 
-        const rows = list.map(m => ({
+        const rows = cleaned.map(m => ({
             user_id: userId,
             name: m.name,
-            year: String(m.year),
-            part: String(m.part),
-            semester: Number(m.semester),
-            mark: Number(m.mark),
+            year: m.year,
+            part: m.part,
+            semester: m.semester,
+            mark: m.mark,
             grade: m.grade
         }));
 
@@ -233,9 +277,10 @@
 
         if (Array.isArray(data)) {
             data.forEach((row, i) => {
-                if (row && list[i]) list[i].id = row.id;
+                if (row && cleaned[i]) cleaned[i].id = row.id;
             });
         }
+        setInMemoryModules(cleaned);
     }
 
     /* ── Chat messages ── */
@@ -250,7 +295,6 @@
         const { data, error } = await query.order('created_at', { ascending: true });
         if (error) throw error;
         const list = (data || []).map(m => ({ role: m.role, content: m.content }));
-        localStorage.setItem(cacheKey(LS_CHAT), JSON.stringify(list));
         return list;
     }
 
@@ -286,7 +330,6 @@
         (data || []).forEach(row => {
             state[row.unlock_key] = row.unlocked_at;
         });
-        localStorage.setItem(cacheKey(LS_ACHIEVEMENTS), JSON.stringify(state));
         return state;
     }
 
@@ -394,7 +437,7 @@
         currentUserId = session && session.user ? session.user.id : null;
         const email = session && session.user ? session.user.email : '';
         const metaName = session && session.user && session.user.user_metadata
-            ? session.user.user_metadata.display_name
+            ? (session.user.user_metadata.display_name || session.user.user_metadata.full_name || '')
             : '';
         const derived = email ? email.split('@')[0] : '';
         const rawName = (metaName && metaName.trim()) ? metaName : derived;
@@ -411,62 +454,41 @@
 
     async function loadAllFromDB() {
         try {
+            // Read this user's own scoped cache FIRST (data from previous
+            // sessions that may not have reached the cloud yet). It can only
+            // ever contain this user's rows.
+            const localMods = readLocalArray(cacheKey(LS_MODULES));
+            const localMsgs = readLocalArray(cacheKey(LS_CHAT));
+            let localUnlocks = {};
+            try {
+                localUnlocks = JSON.parse(localStorage.getItem(cacheKey(LS_ACHIEVEMENTS)) || '{}');
+            } catch (e) { /* ignore corrupt cache */ }
+
             const [dbMods, dbMsgs, dbUnlocks] = await Promise.all([
                 loadModules(),
                 loadChatMessages(),
                 loadAchievementUnlocks()
             ]);
 
-            // Read this user's own scoped cache (data from a previous session
-            // on this browser). It can only ever contain this user's rows.
-            let localMods = readLocalArray(cacheKey(LS_MODULES));
-            let localMsgs = readLocalArray(cacheKey(LS_CHAT));
-            let localUnlocks = {};
-            try {
-                localUnlocks = JSON.parse(localStorage.getItem(cacheKey(LS_ACHIEVEMENTS)) || '{}');
-            } catch (e) { /* ignore corrupt cache */ }
-
-            // First sign-in migration: adopt the shared pre-account (offline)
-            // cache ONLY when this account is brand new (no cloud data) and has
-            // no scoped cache yet, then clear the shared keys so they can never
-            // be re-uploaded into another user's account later.
-            const isNewAccount = dbMods.length === 0 && dbMsgs.length === 0 && Object.keys(dbUnlocks).length === 0;
-            const hasUserCache = localMods.length > 0 || localMsgs.length > 0 || Object.keys(localUnlocks).length > 0;
-            if (currentUserId && isNewAccount && !hasUserCache) {
-                const preMods = readLocalArray(LS_MODULES);
-                const preMsgs = readLocalArray(LS_CHAT);
-                let preUnlocks = {};
-                try {
-                    preUnlocks = JSON.parse(localStorage.getItem(LS_ACHIEVEMENTS) || '{}');
-                } catch (e) { /* ignore corrupt cache */ }
-
-                if (preMods.length || preMsgs.length || Object.keys(preUnlocks).length) {
-                    localMods = preMods;
-                    localMsgs = preMsgs;
-                    localUnlocks = preUnlocks;
-                    localStorage.removeItem(LS_MODULES);
-                    localStorage.removeItem(LS_CHAT);
-                    localStorage.removeItem(LS_ACHIEVEMENTS);
-                }
-            }
-
+            // Merge cloud + local, keeping anything that only exists locally.
+            // The scoped cache is never overwritten with empty cloud data, so
+            // rows whose cloud sync failed still survive a refresh.
             const mods = mergeModules(dbMods, localMods);
             const msgs = mergeChat(dbMsgs, localMsgs);
             const unlocks = Object.assign({}, dbUnlocks, localUnlocks);
 
-            if (mods.length > dbMods.length) {
-                await saveModules(mods); // persists merged list to DB + cache
-            }
             setInMemoryModules(mods);
-
             setInMemoryChat(msgs);
+            localStorage.setItem(cacheKey(LS_MODULES), JSON.stringify(mods));
             localStorage.setItem(cacheKey(LS_CHAT), JSON.stringify(msgs));
+            localStorage.setItem(cacheKey(LS_ACHIEVEMENTS), JSON.stringify(unlocks));
 
+            if (mods.length > dbMods.length) {
+                await saveModules(mods); // sync merged list up to the cloud
+            }
             if (msgs.length > dbMsgs.length) {
                 await persistChat(msgs);
             }
-
-            localStorage.setItem(cacheKey(LS_ACHIEVEMENTS), JSON.stringify(unlocks));
             Object.keys(localUnlocks).forEach(key => {
                 if (!dbUnlocks[key]) saveAchievementUnlock(key, localUnlocks[key]);
             });
@@ -495,9 +517,54 @@
     /* ── Auth page UI (pages/auth.html) ── */
 
     function redirectAfterLogin() {
+        if (authRedirectHandled) return;
+        authRedirectHandled = true;
         let adminPassword = null;
         try { adminPassword = sessionStorage.getItem('gradelytics_admin_password'); } catch (e) { /* ignore */ }
-        window.location.href = adminPassword ? 'admin.html' : 'dashboard.html';
+        if (adminPassword) {
+            window.location.href = 'admin.html';
+            return;
+        }
+
+        // Check whether the signed-in account is an admin email so Google
+        // sign-in can still reach the admin console (gated by ADMIN_PASSWORD).
+        getSession().then(function (res) {
+            const session = res.session;
+            if (session && session.access_token) {
+                return fetch('/api/is-admin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + session.access_token
+                    }
+                })
+                    .then(r => r.json().catch(() => null))
+                    .then(data => {
+                        if (data && data.isAdmin) {
+                            promptAdminPassword(session.user && session.user.email);
+                            return;
+                        }
+                        window.location.href = 'dashboard.html';
+                    });
+            }
+            window.location.href = 'dashboard.html';
+        }).catch(function () {
+            window.location.href = 'dashboard.html';
+        });
+    }
+
+    /* Pre-fill the auth form for an admin who signed in via Google so they
+       only have to type the admin password to open the admin console. */
+    function promptAdminPassword(email) {
+        adminPromptActive = true;
+        const emailInput = document.getElementById('auth-email');
+        const passwordInput = document.getElementById('auth-password');
+        const errorEl = document.getElementById('auth-error');
+        if (emailInput) emailInput.value = email || '';
+        if (errorEl) {
+            errorEl.textContent = 'Admin account detected. Enter the admin password to open the admin console.';
+        }
+        if (passwordInput) passwordInput.focus();
     }
 
     function wireAuthPage() {
@@ -545,6 +612,27 @@
             tab.addEventListener('click', () => setMode(tab.dataset.mode));
         });
 
+        const googleBtn = document.getElementById('auth-google');
+        if (googleBtn) {
+            const originalHTML = googleBtn.innerHTML;
+            googleBtn.addEventListener('click', async function () {
+                errorEl.textContent = '';
+                googleBtn.disabled = true;
+                googleBtn.textContent = 'Redirecting to Google...';
+                try {
+                    const result = await signInWithGoogle();
+                    if (result && result.error) {
+                        errorEl.textContent = result.error.message || 'Google sign-in failed. Try again.';
+                    }
+                } catch (err) {
+                    errorEl.textContent = err.message || 'Something went wrong. Try again.';
+                } finally {
+                    googleBtn.disabled = false;
+                    googleBtn.innerHTML = originalHTML;
+                }
+            });
+        }
+
         form.addEventListener('submit', async function (e) {
             e.preventDefault();
             const email = emailInput.value.trim();
@@ -560,7 +648,7 @@
             submitBtn.textContent = mode === 'login' ? 'Signing in...' : 'Creating account...';
             try {
                 const result = mode === 'login'
-                    ? await loginWithAdminCheck(email, password)
+                    ? await loginWithAdminCheck(email, password, adminPromptActive ? { adminOnly: true } : undefined)
                     : await signUp(email, password);
 
                 if (result.redirecting) return;
@@ -819,6 +907,7 @@
         getCacheKey: cacheKey,
         signUp: signUp,
         signIn: signIn,
+        signInWithGoogle: signInWithGoogle,
         signOut: signOut,
         updatePassword: updatePassword,
         updateDisplayName: updateDisplayName,

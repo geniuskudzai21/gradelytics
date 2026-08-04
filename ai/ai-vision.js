@@ -177,12 +177,19 @@ async function extractFromScreenshot() {
             added++;
         }
 
+        let syncFailed = false;
         try {
             await GradelyticsDB.saveModules(existingModules);
         } catch (err) {
             console.error('Failed to sync extracted modules to the cloud:', err);
+            syncFailed = true;
         }
-        showToast(`Successfully extracted and added ${added} module(s)!`, 'success');
+        showToast(
+            syncFailed
+                ? `Extracted ${added} module(s), but cloud sync failed — they are saved on this device.`
+                : `Successfully extracted and added ${added} module(s)!`,
+            syncFailed ? 'error' : 'success'
+        );
         removeScreenshot();
         displayModules();
         updateStatistics();
