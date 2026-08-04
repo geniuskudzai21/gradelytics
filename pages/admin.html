@@ -15,7 +15,7 @@
     <meta name="theme-color" content="#0A0C10">
     <link rel="apple-touch-icon" href="/images/icons/icon-192.png">
 </head>
-<body>
+<body id="admin-page">
     <div class="admin-shell">
         <!-- ── Sidebar ── -->
         <aside class="sidebar">
@@ -270,7 +270,10 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="../js/admin.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase-config.js" defer></script>
+    <script src="../js/supabase.js" defer></script>
+    <script src="../js/admin.js" defer></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () {

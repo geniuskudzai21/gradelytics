@@ -249,7 +249,13 @@
        cache and in-memory list are kept in sync with the cleaned rows so the
        data survives a refresh even if the cloud write fails. */
     async function saveModules(list) {
-        const cleaned = list.map(sanitizeModule).filter(Boolean);
+        const seen = new Set();
+        const cleaned = list.map(sanitizeModule).filter(Boolean).filter(m => {
+            const key = moduleKey(m);
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
         localStorage.setItem(cacheKey(LS_MODULES), JSON.stringify(cleaned));
         setInMemoryModules(cleaned);
 
@@ -365,8 +371,15 @@
     }
 
     function mergeModules(dbMods, localMods) {
-        const seen = new Set(dbMods.map(moduleKey));
-        const merged = [...dbMods];
+        const seen = new Set();
+        const merged = [];
+        dbMods.forEach(m => {
+            const key = moduleKey(m);
+            if (!seen.has(key)) {
+                merged.push(m);
+                seen.add(key);
+            }
+        });
         localMods.forEach(m => {
             const key = moduleKey(m);
             if (!seen.has(key)) {
@@ -483,7 +496,10 @@
             localStorage.setItem(cacheKey(LS_CHAT), JSON.stringify(msgs));
             localStorage.setItem(cacheKey(LS_ACHIEVEMENTS), JSON.stringify(unlocks));
 
-            if (mods.length > dbMods.length) {
+            // Re-sync when the merged, deduplicated list differs from what the
+            // DB holds: extra local-only rows are pushed up, and duplicate rows
+            // already in the DB are collapsed by the delete-and-reinsert.
+            if (mods.length !== dbMods.length) {
                 await saveModules(mods); // sync merged list up to the cloud
             }
             if (msgs.length > dbMsgs.length) {
@@ -842,16 +858,19 @@
     async function initApp() {
         const hasConfig = init();
         const isAuthPage = !!document.getElementById('auth-page');
+        // Admin console guards itself with the stored admin password, so it
+        // must never run the dashboard bootstrap or the auth redirects below.
+        const isAdminPage = !!document.getElementById('admin-page');
 
         if (isAuthPage) {
             wireAuthPage();
-        } else {
+        } else if (!isAdminPage) {
             wireLogout();
             wireSettings();
         }
 
         if (!hasConfig) {
-            if (!isAuthPage) {
+            if (!isAuthPage && !isAdminPage) {
                 fallbackToLocal();
                 revealApp();
             }
@@ -862,7 +881,7 @@
             if (event === 'SIGNED_IN') {
                 if (isAuthPage) {
                     redirectAfterLogin();
-                } else {
+                } else if (!isAdminPage) {
                     setAuthedUI(session);
                     loadAllFromDB();
                     revealApp();
@@ -873,7 +892,7 @@
                 currentUserId = null;
                 setInMemoryModules([]);
                 setInMemoryChat([]);
-                if (!isAuthPage) {
+                if (!isAuthPage && !isAdminPage) {
                     fallbackToLocal();
                     window.location.href = 'auth.html';
                 }
@@ -884,12 +903,12 @@
         if (session) {
             if (isAuthPage) {
                 redirectAfterLogin();
-            } else {
+            } else if (!isAdminPage) {
                 setAuthedUI(session);
                 await loadAllFromDB();
                 revealApp();
             }
-        } else if (!isAuthPage) {
+        } else if (!isAuthPage && !isAdminPage) {
             window.location.href = 'auth.html';
         }
     }

@@ -172,9 +172,24 @@ async function extractFromScreenshot() {
         }
 
         let added = 0;
+        const existingKeys = new Set(existingModules.map(m =>
+            `${m.name}|${m.year}|${m.part}|${m.semester}|${m.mark}|${m.grade}`
+        ));
         for (const c of cleaned) {
+            if (existingKeys.has(c.key)) continue;
             existingModules.push(c.module);
+            existingKeys.add(c.key);
             added++;
+        }
+
+        if (added === 0) {
+            showToast('All extracted modules are already in your results.', 'success');
+            extractBtn.disabled = false;
+            extractBtn.innerHTML = 'Extract Results';
+            removeScreenshot();
+            displayModules();
+            updateStatistics();
+            return;
         }
 
         let syncFailed = false;

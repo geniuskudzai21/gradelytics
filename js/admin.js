@@ -517,9 +517,12 @@
             });
         });
 
-        document.getElementById('admin-lock').addEventListener('click', function () {
+        document.getElementById('admin-lock').addEventListener('click', async function () {
             try { sessionStorage.removeItem('gradelytics_admin_password'); } catch (e) { /* ignore */ }
-            window.location.href = 'dashboard.html';
+            if (typeof GradelyticsDB !== 'undefined' && GradelyticsDB.signOut) {
+                try { await GradelyticsDB.signOut(); } catch (err) { console.error('Sign out failed:', err); }
+            }
+            window.location.href = 'auth.html';
         });
 
         /* Theme toggle — mirrors the app's light/dark switcher */

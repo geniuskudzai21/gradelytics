@@ -94,7 +94,7 @@ async function callAI(messages) {
         body: JSON.stringify({
             requestType: 'chat',
             messages: messages,
-            temperature: 0.5,
+            temperature: 0.2,
             max_tokens: 500,
             stream: false
         })
