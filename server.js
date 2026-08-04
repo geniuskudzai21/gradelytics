@@ -37,39 +37,29 @@ const server = http.createServer(async (req, res) => {
             const isVision = parsed.requestType === 'vision';
             delete parsed.requestType;
 
+            // Prefer Gemini for vision. If it fails (rate limit, outage, etc.)
+            // fall back to the NVIDIA vision model (VISION_MODEL) so extraction
+            // never surfaces an error when Gemini is busy.
             if (isVision && process.env.GEMINI_API_KEY && process.env.GOOGLE_MODEL) {
-                const apiRes = await proxyToGemini(parsed, {
-                    apiKey: process.env.GEMINI_API_KEY,
-                    model: process.env.GOOGLE_MODEL
-                });
-                const text = await apiRes.text();
-                res.writeHead(apiRes.status, { 'Content-Type': 'application/json' });
-                res.end(text);
-                return;
+                try {
+                    const gemini = await proxyToGemini(parsed, {
+                        apiKey: process.env.GEMINI_API_KEY,
+                        model: process.env.GOOGLE_MODEL
+                    });
+                    if (gemini.status === 200) {
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(gemini.text);
+                        return;
+                    }
+                    console.error('[server] Gemini vision failed, falling back to NVIDIA:', gemini.status, gemini.text);
+                } catch (err) {
+                    console.error('[server] Gemini vision threw, falling back to NVIDIA:', err.message);
+                }
             }
 
-            const modelEnv = isVision ? process.env.VISION_MODEL : process.env.AI_MODEL;
-            const apiKey = isVision
-                ? (process.env.NVIDIA_VISION_API_KEY || process.env.NVIDIA_API_KEY)
-                : process.env.NVIDIA_API_KEY;
-            if (!apiKey) {
-                res.writeHead(500, { 'Content-Type': 'application/json' });
-                return res.end(JSON.stringify({ error: 'NVIDIA_API_KEY not set.' }));
-            }
-            if (modelEnv) parsed.model = modelEnv;
-
-            const apiRes = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(parsed)
-            });
-            const text = await apiRes.text();
+            const apiRes = await proxyToNvidia(parsed, isVision);
             res.writeHead(apiRes.status, { 'Content-Type': 'application/json' });
-            res.end(text);
+            res.end(apiRes.text);
         } catch (err) {
             res.writeHead(500, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: err.message }));
@@ -459,6 +449,30 @@ function parseDataURL(dataUrl) {
     return { mime: match[1], base64: match[2] };
 }
 
+async function proxyToNvidia(payload, isVision) {
+    const modelEnv = isVision ? process.env.VISION_MODEL : process.env.AI_MODEL;
+    const apiKey = isVision
+        ? (process.env.NVIDIA_VISION_API_KEY || process.env.NVIDIA_API_KEY)
+        : process.env.NVIDIA_API_KEY;
+    if (!apiKey) {
+        return { status: 500, text: JSON.stringify({ error: 'NVIDIA_API_KEY not set.' }) };
+    }
+    const body = { ...payload };
+    if (modelEnv) body.model = modelEnv;
+
+    const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify(body)
+    });
+    const text = await res.text();
+    return { status: res.status, text };
+}
+
 async function proxyToGemini(payload, { apiKey, model }) {
     const contents = [];
     const systemParts = [];
@@ -506,10 +520,7 @@ async function proxyToGemini(payload, { apiKey, model }) {
 
     if (!res.ok) {
         const errText = await res.text();
-        return new Response(JSON.stringify({ error: `Gemini API error (${res.status}): ${errText}` }), {
-            status: res.status,
-            headers: { 'Content-Type': 'application/json' }
-        });
+        return { status: res.status, text: JSON.stringify({ error: `Gemini API error (${res.status}): ${errText}` }) };
     }
 
     const data = await res.json();
@@ -517,10 +528,7 @@ async function proxyToGemini(payload, { apiKey, model }) {
         ? (data.candidates[0].content.parts || [])
         : [];
     const content = parts.map(p => p.text || '').join('');
-    return new Response(JSON.stringify({ choices: [{ message: { content } }] }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-    });
+    return { status: 200, text: JSON.stringify({ choices: [{ message: { content } }] }) };
 }
 
 function countBy(list, key) {

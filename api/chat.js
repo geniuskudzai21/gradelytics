@@ -8,37 +8,53 @@ export default async function handler(req, res) {
         const isVision = body.requestType === 'vision';
         delete body.requestType;
 
+        // Prefer Gemini for vision. If it fails (rate limit, outage, etc.)
+        // fall back to the NVIDIA vision model (VISION_MODEL) so extraction
+        // never surfaces an error when Gemini is busy.
         if (isVision && process.env.GEMINI_API_KEY && process.env.GOOGLE_MODEL) {
-            const gemini = await proxyToGemini(body, {
-                apiKey: process.env.GEMINI_API_KEY,
-                model: process.env.GOOGLE_MODEL
-            });
-            res.writeHead(gemini.status, { 'Content-Type': 'application/json' });
-            return res.end(gemini.text);
+            try {
+                const gemini = await proxyToGemini(body, {
+                    apiKey: process.env.GEMINI_API_KEY,
+                    model: process.env.GOOGLE_MODEL
+                });
+                if (gemini.status === 200) {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    return res.end(gemini.text);
+                }
+                console.error('[chat] Gemini vision failed, falling back to NVIDIA:', gemini.status, gemini.text);
+            } catch (err) {
+                console.error('[chat] Gemini vision threw, falling back to NVIDIA:', err.message);
+            }
         }
 
-        const modelEnv = isVision ? process.env.VISION_MODEL : process.env.AI_MODEL;
-        const apiKey = isVision
-            ? (process.env.NVIDIA_VISION_API_KEY || process.env.NVIDIA_API_KEY)
-            : process.env.NVIDIA_API_KEY;
-        if (modelEnv) body.model = modelEnv;
-
-        const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(body)
-        });
-
-        const text = await response.text();
-        res.writeHead(response.status, { 'Content-Type': 'application/json' });
-        res.end(text);
+        const nvidia = await proxyToNvidia(body, isVision);
+        res.writeHead(nvidia.status, { 'Content-Type': 'application/json' });
+        res.end(nvidia.text);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
+}
+
+async function proxyToNvidia(body, isVision) {
+    const modelEnv = isVision ? process.env.VISION_MODEL : process.env.AI_MODEL;
+    const apiKey = isVision
+        ? (process.env.NVIDIA_VISION_API_KEY || process.env.NVIDIA_API_KEY)
+        : process.env.NVIDIA_API_KEY;
+    const payload = { ...body };
+    if (modelEnv) payload.model = modelEnv;
+
+    const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    });
+
+    const text = await response.text();
+    return { status: response.status, text };
 }
 
 function parseDataURL(dataUrl) {
