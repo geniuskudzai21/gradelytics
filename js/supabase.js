@@ -43,6 +43,11 @@
     let currentUserId = null;
     let adminPromptActive = false;
     let authRedirectHandled = false;
+    /* Bumped on every local data write (module saves, achievement resets).
+       An in-flight loadAllFromDB() that started reading before a write can
+       detect the change and bail, so a stale merge can never resurrect rows
+       (or achievement progress) the user just deleted. */
+    let syncVersion = 0;
 
     /* ── Client bootstrap ── */
 
@@ -72,6 +77,7 @@
     }
 
     function clearUserCache() {
+        syncVersion++;
         localStorage.removeItem(cacheKey(LS_MODULES));
         localStorage.removeItem(cacheKey(LS_CHAT));
         localStorage.removeItem(cacheKey(LS_ACHIEVEMENTS));
@@ -209,9 +215,11 @@
             return JSON.parse(localStorage.getItem(cacheKey(LS_MODULES)) || '[]');
         }
         const userId = await getUserId();
-        let query = sb.from('modules').select('id, name, year, part, semester, mark, grade');
-        if (userId) query = query.eq('user_id', userId);
-        const { data, error } = await query.order('created_at', { ascending: true });
+        if (!userId) throw new Error('Not signed in');
+        const { data, error } = await sb.from('modules')
+            .select('id, name, year, part, semester, mark, grade')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: true });
         if (error) throw error;
 
         return (data || []).map(m => ({
@@ -245,10 +253,12 @@
     }
 
     /* Full reconciliation: delete the user's rows, then reinsert. Simple and
-       always correct for the small datasets this app deals with. The scoped
-       cache and in-memory list are kept in sync with the cleaned rows so the
-       data survives a refresh even if the cloud write fails. */
+       always correct for the small datasets this app deals with. The in-memory
+       list is updated immediately; the scoped cache is only mirrored for
+       offline fallback. Returns { synced, error } — callers must surface a
+       failed cloud write instead of pretending the delete/add succeeded. */
     async function saveModules(list) {
+        syncVersion++;
         const seen = new Set();
         const cleaned = list.map(sanitizeModule).filter(Boolean).filter(m => {
             const key = moduleKey(m);
@@ -256,17 +266,29 @@
             seen.add(key);
             return true;
         });
-        localStorage.setItem(cacheKey(LS_MODULES), JSON.stringify(cleaned));
         setInMemoryModules(cleaned);
 
-        if (!sb) return;
+        if (!sb) {
+            localStorage.setItem(cacheKey(LS_MODULES), JSON.stringify(cleaned));
+            return { synced: true };
+        }
+
         const userId = await getUserId();
-        if (!userId) return;
+        if (!userId) {
+            localStorage.setItem(cacheKey(LS_MODULES), JSON.stringify(cleaned));
+            return { synced: false, error: 'Not signed in' };
+        }
 
         const { error: delError } = await sb.from('modules').delete().eq('user_id', userId);
-        if (delError) throw delError;
+        if (delError) {
+            localStorage.setItem(cacheKey(LS_MODULES), JSON.stringify(cleaned));
+            return { synced: false, error: delError.message };
+        }
 
-        if (cleaned.length === 0) return;
+        if (cleaned.length === 0) {
+            localStorage.setItem(cacheKey(LS_MODULES), JSON.stringify(cleaned));
+            return { synced: true };
+        }
 
         const rows = cleaned.map(m => ({
             user_id: userId,
@@ -279,7 +301,10 @@
         }));
 
         const { data, error } = await sb.from('modules').insert(rows).select('id');
-        if (error) throw error;
+        if (error) {
+            localStorage.setItem(cacheKey(LS_MODULES), JSON.stringify(cleaned));
+            return { synced: false, error: error.message };
+        }
 
         if (Array.isArray(data)) {
             data.forEach((row, i) => {
@@ -287,6 +312,8 @@
             });
         }
         setInMemoryModules(cleaned);
+        localStorage.setItem(cacheKey(LS_MODULES), JSON.stringify(cleaned));
+        return { synced: true };
     }
 
     /* ── Chat messages ── */
@@ -296,9 +323,11 @@
             return JSON.parse(localStorage.getItem(cacheKey(LS_CHAT)) || '[]');
         }
         const userId = await getUserId();
-        let query = sb.from('chat_messages').select('role, content');
-        if (userId) query = query.eq('user_id', userId);
-        const { data, error } = await query.order('created_at', { ascending: true });
+        if (!userId) throw new Error('Not signed in');
+        const { data, error } = await sb.from('chat_messages')
+            .select('role, content')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: true });
         if (error) throw error;
         const list = (data || []).map(m => ({ role: m.role, content: m.content }));
         return list;
@@ -327,9 +356,11 @@
             return JSON.parse(localStorage.getItem(cacheKey(LS_ACHIEVEMENTS)) || '{}');
         }
         const userId = await getUserId();
-        let query = sb.from('achievement_unlocks').select('unlock_key, unlocked_at');
-        if (userId) query = query.eq('user_id', userId);
-        const { data, error } = await query.order('unlocked_at', { ascending: true });
+        if (!userId) throw new Error('Not signed in');
+        const { data, error } = await sb.from('achievement_unlocks')
+            .select('unlock_key, unlocked_at')
+            .eq('user_id', userId)
+            .order('unlocked_at', { ascending: true });
         if (error) throw error;
 
         const state = {};
@@ -350,6 +381,19 @@
         if (error) console.error('[GradelyticsDB] achievement save failed:', error.message);
     }
 
+    /* Wipe the user's achievement progress — unlock history and record
+       baselines — both locally and in the cloud. Called when every module is
+       deleted so the Milestones section starts from a clean slate. */
+    async function resetAchievements() {
+        if (window.resetAchievementProgress) window.resetAchievementProgress();
+        syncVersion++;
+        if (!sb) return { synced: true };
+        const userId = await getUserId();
+        if (!userId) return { synced: false, error: 'Not signed in' };
+        const { error } = await sb.from('achievement_unlocks').delete().eq('user_id', userId);
+        return { synced: !error, error: error ? error.message : null };
+    }
+
     /* ── Shared helpers ── */
 
     function readLocalArray(key) {
@@ -368,52 +412,6 @@
 
     function moduleKey(m) {
         return [m.name, m.year, m.part, m.semester, m.mark, m.grade].map(String).join('|');
-    }
-
-    function mergeModules(dbMods, localMods) {
-        const seen = new Set();
-        const merged = [];
-        dbMods.forEach(m => {
-            const key = moduleKey(m);
-            if (!seen.has(key)) {
-                merged.push(m);
-                seen.add(key);
-            }
-        });
-        localMods.forEach(m => {
-            const key = moduleKey(m);
-            if (!seen.has(key)) {
-                merged.push(m);
-                seen.add(key);
-            }
-        });
-        return merged;
-    }
-
-    function mergeChat(dbMsgs, localMsgs) {
-        const seen = new Set(dbMsgs.map(m => m.role + '|' + m.content));
-        const merged = [...dbMsgs];
-        localMsgs.forEach(m => {
-            const key = m.role + '|' + m.content;
-            if (!seen.has(key)) {
-                merged.push(m);
-                seen.add(key);
-            }
-        });
-        return merged;
-    }
-
-    async function persistChat(msgs) {
-        if (!sb) return;
-        const userId = await getUserId();
-        if (!userId) return;
-        await sb.from('chat_messages').delete().eq('user_id', userId);
-        if (msgs.length) {
-            const { error } = await sb.from('chat_messages').insert(
-                msgs.map(m => ({ user_id: userId, role: m.role, content: m.content }))
-            );
-            if (error) console.error('[GradelyticsDB] chat persist failed:', error.message);
-        }
     }
 
     function setInMemoryModules(list) {
@@ -467,47 +465,27 @@
 
     async function loadAllFromDB() {
         try {
-            // Read this user's own scoped cache FIRST (data from previous
-            // sessions that may not have reached the cloud yet). It can only
-            // ever contain this user's rows.
-            const localMods = readLocalArray(cacheKey(LS_MODULES));
-            const localMsgs = readLocalArray(cacheKey(LS_CHAT));
-            let localUnlocks = {};
-            try {
-                localUnlocks = JSON.parse(localStorage.getItem(cacheKey(LS_ACHIEVEMENTS)) || '{}');
-            } catch (e) { /* ignore corrupt cache */ }
-
+            const versionAtStart = syncVersion;
             const [dbMods, dbMsgs, dbUnlocks] = await Promise.all([
                 loadModules(),
                 loadChatMessages(),
                 loadAchievementUnlocks()
             ]);
 
-            // Merge cloud + local, keeping anything that only exists locally.
-            // The scoped cache is never overwritten with empty cloud data, so
-            // rows whose cloud sync failed still survive a refresh.
-            const mods = mergeModules(dbMods, localMods);
-            const msgs = mergeChat(dbMsgs, localMsgs);
-            const unlocks = Object.assign({}, dbUnlocks, localUnlocks);
+            // A local write (add/edit/delete/reset) landed while the DB reads
+            // were in flight. That write is authoritative and already synced,
+            // so bail instead of painting stale data over the screen.
+            if (syncVersion !== versionAtStart) return;
 
-            setInMemoryModules(mods);
-            setInMemoryChat(msgs);
-            localStorage.setItem(cacheKey(LS_MODULES), JSON.stringify(mods));
-            localStorage.setItem(cacheKey(LS_CHAT), JSON.stringify(msgs));
-            localStorage.setItem(cacheKey(LS_ACHIEVEMENTS), JSON.stringify(unlocks));
-
-            // Re-sync when the merged, deduplicated list differs from what the
-            // DB holds: extra local-only rows are pushed up, and duplicate rows
-            // already in the DB are collapsed by the delete-and-reinsert.
-            if (mods.length !== dbMods.length) {
-                await saveModules(mods); // sync merged list up to the cloud
-            }
-            if (msgs.length > dbMsgs.length) {
-                await persistChat(msgs);
-            }
-            Object.keys(localUnlocks).forEach(key => {
-                if (!dbUnlocks[key]) saveAchievementUnlock(key, localUnlocks[key]);
-            });
+            // Signed in — the cloud is the single source of truth. The scoped
+            // local cache is ONLY mirrored for offline fallback; it is never
+            // merged back in, so rows the user deleted in the cloud cannot
+            // resurrect on the next refresh.
+            setInMemoryModules(dbMods);
+            setInMemoryChat(dbMsgs);
+            localStorage.setItem(cacheKey(LS_MODULES), JSON.stringify(dbMods));
+            localStorage.setItem(cacheKey(LS_CHAT), JSON.stringify(dbMsgs));
+            localStorage.setItem(cacheKey(LS_ACHIEVEMENTS), JSON.stringify(dbUnlocks));
 
             rerender();
         } catch (err) {
@@ -939,6 +917,7 @@
         clearChatMessages: clearChatMessages,
         loadAchievementUnlocks: loadAchievementUnlocks,
         saveAchievementUnlock: saveAchievementUnlock,
+        resetAchievements: resetAchievements,
         getModules: getInMemoryModules
     };
 })();

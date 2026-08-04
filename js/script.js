@@ -242,16 +242,16 @@ async function addModule() {
     const module = { name, year, part, semester: semesterNumber, mark: markNumber, grade };
 
     modules.push(module);
-    try {
-        await GradelyticsDB.saveModules(modules);
-    } catch (err) {
-        console.error('Failed to sync module to the cloud:', err);
-        showToast("Module saved locally, but cloud sync failed.", "error");
+    const res = await GradelyticsDB.saveModules(modules);
+    if (res && res.synced === false) {
+        console.error('Cloud sync failed:', res.error);
+        showToast("Module added locally, but the cloud sync failed.", "error");
+    } else {
+        showToast("Module added successfully!", "success");
     }
     displayModules();
     updateStatistics();
     document.getElementById('module-form').reset();
-    showToast("Module added successfully!", "success");
 }
 
 document.getElementById('module-form').addEventListener('submit', (event) => {
@@ -322,16 +322,16 @@ function editModule(index) {
         }
 
         modules[index] = { name: newName, year: newYear, part: newPart, semester: parseInt(newSemester), mark: parseFloat(newMark), grade: newGrade };
-        try {
-            await GradelyticsDB.saveModules(modules);
-        } catch (err) {
-            console.error('Failed to sync module to the cloud:', err);
-            showToast("Module saved locally, but cloud sync failed.", "error");
+        const res = await GradelyticsDB.saveModules(modules);
+        if (res && res.synced === false) {
+            console.error('Cloud sync failed:', res.error);
+            showToast("Module updated locally, but the cloud sync failed.", "error");
+        } else {
+            showToast("Module updated successfully!", "success");
         }
         displayModules();
         updateStatistics();
         modal.classList.remove('open');
-        showToast("Module updated successfully!", "success");
     };
 }
 
@@ -363,26 +363,34 @@ function deleteAllModules() {
 }
 
 document.getElementById('confirm-yes').addEventListener('click', async function () {
-    if (pendingDeleteIndex === 'all') {
-        modules = [];
-        try {
-            await GradelyticsDB.saveModules(modules);
-        } catch (err) {
-            console.error('Failed to sync module deletion to the cloud:', err);
+    let cloudOk = true;
+    try {
+        if (pendingDeleteIndex === 'all') {
+            modules = [];
+        } else if (pendingDeleteIndex !== null) {
+            modules.splice(pendingDeleteIndex, 1);
         }
-        displayModules();
-        updateStatistics();
-        showToast('All modules deleted.', 'success');
-    } else if (pendingDeleteIndex !== null) {
-        modules.splice(pendingDeleteIndex, 1);
-        try {
-            await GradelyticsDB.saveModules(modules);
-        } catch (err) {
-            console.error('Failed to sync module deletion to the cloud:', err);
+        const res = await GradelyticsDB.saveModules(modules);
+        if (res && res.synced === false) cloudOk = false;
+        // When the last module is removed, wipe the achievements too so the
+        // Milestones section starts from a clean slate.
+        if (modules.length === 0) {
+            const reset = await GradelyticsDB.resetAchievements();
+            if (reset && reset.synced === false) {
+                cloudOk = false;
+                console.error('Achievement reset failed to reach the cloud:', reset.error);
+            }
         }
-        displayModules();
-        updateStatistics();
-        showToast("Module deleted.", "success");
+    } catch (err) {
+        cloudOk = false;
+        console.error('Failed to sync module deletion to the cloud:', err);
+    }
+    displayModules();
+    updateStatistics();
+    if (cloudOk) {
+        showToast(pendingDeleteIndex === 'all' ? 'All modules deleted.' : 'Module deleted.', 'success');
+    } else {
+        showToast('Deleted on this device, but the cloud sync failed — they may return after refresh.', 'error');
     }
     pendingDeleteIndex = null;
     document.getElementById('confirm-modal').classList.remove('open');

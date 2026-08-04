@@ -194,7 +194,11 @@ async function extractFromScreenshot() {
 
         let syncFailed = false;
         try {
-            await GradelyticsDB.saveModules(existingModules);
+            const res = await GradelyticsDB.saveModules(existingModules);
+            if (res && res.synced === false) {
+                console.error('Cloud sync failed:', res.error);
+                syncFailed = true;
+            }
         } catch (err) {
             console.error('Failed to sync extracted modules to the cloud:', err);
             syncFailed = true;

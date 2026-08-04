@@ -12,6 +12,7 @@ Gradelytics is a web application designed to help students track, analyze, and v
 - **Gradelytics AI Chat Assistant** - AI-powered chatbot with access to your academic data for personalized analysis, predictions, career recommendations, and study tips. Includes suggested prompts and persistent chat history
 - **CSV Export** - Download your academic details as a CSV file
 - **Responsive Design** - Mobile-friendly sidebar navigation with hamburger menu toggle
+- **Installable PWA** - Installable as a standalone app with offline caching via a service worker and a web app manifest
 - **Cloud Data Persistence** - User accounts with email sign-up/login. Modules, AI chat history, and achievements sync to a Supabase backend with row-level security, so your data follows you across devices. Falls back to localStorage for offline / no-account use
 
 ## Technologies Used
@@ -21,7 +22,7 @@ Gradelytics is a web application designed to help students track, analyze, and v
 - Space Grotesk + Inter fonts (Google Fonts)
 - Boxicons (icon library)
 - Supabase (PostgreSQL backend, Auth, Row Level Security)
-- NVIDIA API (AI chat and vision models via backend proxy)
+- Google Gemini + NVIDIA API (AI chat and vision models via backend proxy, with automatic fallback)
 - Vercel Serverless Functions (API proxy for secure key management)
 
 ## Purpose
@@ -41,7 +42,7 @@ See [supabase/README.md](supabase/README.md) for the full walkthrough.
 
 ### AI keys
 
-Set `NVIDIA_API_KEY` (and optionally `NVIDIA_VISION_API_KEY`, `AI_MODEL`, `VISION_MODEL`) in `.env` for local development, or as Vercel environment variables for deployment.
+Set `NVIDIA_API_KEY` (and optionally `NVIDIA_VISION_API_KEY`, `AI_MODEL`, `VISION_MODEL`) in `.env` for local development, or as Vercel environment variables for deployment. Vision requests prefer Google Gemini when `GEMINI_API_KEY` and `GOOGLE_MODEL` are also set, falling back to NVIDIA automatically.
 
 ### Run locally
 

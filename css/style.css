@@ -1962,6 +1962,42 @@ section.active {
     background: linear-gradient(90deg, var(--bronze), #D49A40);
 }
 
+.achievement-card--blue.achievement-card--earned::before {
+    background: linear-gradient(90deg, var(--color-primary), #6BA6F0);
+}
+
+.achievement-card--purple.achievement-card--earned::before {
+    background: linear-gradient(90deg, #7C3AED, #A78BFA);
+}
+
+.achievement-card--teal.achievement-card--earned::before {
+    background: linear-gradient(90deg, var(--color-accent), #4ADCC8);
+}
+
+.achievement-card--orange.achievement-card--earned::before {
+    background: linear-gradient(90deg, #F97316, #FBBF24);
+}
+
+.achievement-card--green.achievement-card--earned::before {
+    background: linear-gradient(90deg, var(--color-growth), #4CD06F);
+}
+
+.achievement-card--indigo.achievement-card--earned::before {
+    background: linear-gradient(90deg, #6366F1, #A5B4FC);
+}
+
+.achievement-card--night.achievement-card--earned::before {
+    background: linear-gradient(90deg, #4B5563, #9CA3AF);
+}
+
+.achievement-card--pink.achievement-card--earned::before {
+    background: linear-gradient(90deg, #EC4899, #F9A8D4);
+}
+
+.achievement-card--red.achievement-card--earned::before {
+    background: linear-gradient(90deg, #DC2626, #F87171);
+}
+
 /* ── Medal Cards: Locked ── */
 .achievement-card--locked {
     background: var(--surface-alt);
@@ -2008,6 +2044,60 @@ section.active {
     background: linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 40%, rgba(0,0,0,0.1) 100%), var(--bronze);
     color: #fff;
     box-shadow: 0 2px 8px rgba(192, 122, 32, 0.3);
+}
+
+.achievement-medal-badge--blue {
+    background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 40%, rgba(0,0,0,0.08) 100%), var(--color-primary);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(var(--color-primary-rgb), 0.35);
+}
+
+.achievement-medal-badge--purple {
+    background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 40%, rgba(0,0,0,0.08) 100%), #7C3AED;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35);
+}
+
+.achievement-medal-badge--teal {
+    background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 40%, rgba(0,0,0,0.08) 100%), var(--color-accent);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(var(--color-accent-rgb), 0.35);
+}
+
+.achievement-medal-badge--orange {
+    background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 40%, rgba(0,0,0,0.08) 100%), #F97316;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(249, 115, 22, 0.35);
+}
+
+.achievement-medal-badge--green {
+    background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 40%, rgba(0,0,0,0.08) 100%), var(--color-growth);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(var(--color-growth-rgb), 0.35);
+}
+
+.achievement-medal-badge--indigo {
+    background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 40%, rgba(0,0,0,0.08) 100%), #6366F1;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+}
+
+.achievement-medal-badge--night {
+    background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 40%, rgba(0,0,0,0.15) 100%), #4B5563;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(75, 85, 99, 0.35);
+}
+
+.achievement-medal-badge--pink {
+    background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 40%, rgba(0,0,0,0.08) 100%), #EC4899;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(236, 72, 153, 0.35);
+}
+
+.achievement-medal-badge--red {
+    background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 40%, rgba(0,0,0,0.08) 100%), #DC2626;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.35);
 }
 
 /* Glossy shine overlay on earned medals */
