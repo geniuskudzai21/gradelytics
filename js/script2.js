@@ -36,7 +36,7 @@ function markAchievementUnlocked(key) {
    section re-locks completely. Called by GradelyticsDB.resetAchievements()
    when every module is deleted. */
 function resetAchievementProgress() {
-    ['achievementUnlocks', 'achievement_pb_avg', 'achievement_best_sem_avg', 'achievement_best_mark']
+    ['achievementUnlocks', 'achievement_best_sem_avg', 'achievement_best_mark']
         .forEach(key => {
             const scoped = (window.GradelyticsDB && typeof GradelyticsDB.getCacheKey === 'function')
                 ? GradelyticsDB.getCacheKey(key)
@@ -80,24 +80,6 @@ function updateAchievements() {
         return { key, avg: d.marks / d.count, count: d.count, distinctions: d.distinctions };
     });
     const semesterAverages = semesterStats.map(s => s.avg);
-    const cumulativeAvg = modules.length
-        ? modules.reduce((s, m) => s + (Number(m.mark) || 0), 0) / modules.length
-        : null;
-
-    /* Improvement streaks between consecutive semesters (Rising Star). */
-    const semesterAveragesList = semesterStats
-        .map(s => ({ semester: s.key, avgMark: s.avg }))
-        .sort((a, b) => a.semester.localeCompare(b.semester));
-
-    let improvements = [];
-    for (let i = 1; i < semesterAveragesList.length; i++) {
-        const prev = semesterAveragesList[i - 1];
-        const curr = semesterAveragesList[i];
-        const diff = curr.avgMark - prev.avgMark;
-        if (diff >= 5) {
-            improvements.push({ prev, curr, diff });
-        }
-    }
 
     /* Record-style achievements remember the user's best values (scoped per
        account) so they unlock exactly once — the first time a previous best
@@ -121,15 +103,11 @@ function updateAchievements() {
     }
 
     const achievementDefs = [
-        { key: 'personal_best',      label: 'New Personal Best',   criteria: 'Beat your previous cumulative average',             icon: 'bx-line-chart',    color: 'blue' },
         { key: 'best_semester',      label: 'Best Semester Ever',  criteria: 'Record your best-ever semester average',            icon: 'bx-star',           color: 'gold' },
         { key: 'super_distinction',  label: 'Super Distinction',   criteria: 'Score 90+ in any module',                           icon: 'bx-trophy',         color: 'purple' },
         { key: 'highest_mark',       label: 'Highest Module Mark', criteria: 'Beat your personal-best module mark',               icon: 'bx-diamond',        color: 'teal' },
-        { key: 'distinction_master', label: 'Distinction Master',  criteria: 'Earn 5 distinctions in a single semester',          icon: 'bx-crown',          color: 'orange' },
         { key: 'perfect_semester',   label: 'Perfect Semester',    criteria: 'Earn all distinctions in a single semester',       icon: 'bx-bullseye',       color: 'green' },
-        { key: 'distinction_legend', label: 'Distinction Legend',  criteria: 'Score 15+ distinctions overall',                   icon: 'bx-certification',  color: 'red' },
-        { key: 'elite_scholar',      label: 'Elite Scholar',       criteria: 'Semester average above 75%',                        icon: 'bx-graduation-cap', color: 'indigo' },
-        { key: 'improvement',        label: 'Rising Star',         criteria: '5+ mark improvement between semesters',             icon: 'bx-trending-up',    color: 'pink' }
+        { key: 'elite_scholar',      label: 'Elite Scholar',       criteria: 'Semester average above 75%',                        icon: 'bx-graduation-cap', color: 'indigo' }
     ];
 
     /* Returns { earned, hint, distance } for one achievement. `earned` is the
@@ -137,20 +115,8 @@ function updateAchievements() {
     function evaluate(def) {
         const top = sortedModules[0];
         const bestAvg = semesterAverages.length ? Math.max(...semesterAverages) : null;
-        const bestDist = semesterStats.reduce((a, s) => Math.max(a, s.distinctions), 0);
 
         switch (def.key) {
-            case 'personal_best': {
-                if (cumulativeAvg == null) return { earned: false, hint: '', distance: null };
-                const rec = beatRecord('pb_avg', cumulativeAvg);
-                const diff = rec ? cumulativeAvg - rec.prev : null;
-                return {
-                    earned: !!rec && diff > 0,
-                    hint: rec && diff < 0 ? `${(-diff).toFixed(1)} from your best average of ${rec.prev.toFixed(1)}%` : '',
-                    distance: rec && diff < 0 ? -diff : null,
-                    refs: top ? sortedModules.filter(m => m.mark === top.mark).map(m => ({ name: m.name, detail: m.mark })) : []
-                };
-            }
             case 'best_semester': {
                 if (bestAvg == null) return { earned: false, hint: '', distance: null };
                 const rec = beatRecord('best_sem_avg', bestAvg);
@@ -184,15 +150,6 @@ function updateAchievements() {
                     refs: sortedModules.filter(m => m.mark === top.mark).map(m => ({ name: m.name, detail: m.mark }))
                 };
             }
-            case 'distinction_master': {
-                const masterSemesters = semesterStats.filter(s => s.distinctions >= 5);
-                return {
-                    earned: bestDist >= 5,
-                    hint: bestDist > 0 && bestDist < 5 ? `${5 - bestDist} more distinction${5 - bestDist !== 1 ? 's' : ''} needed in your best semester` : '',
-                    distance: bestDist > 0 && bestDist < 5 ? 5 - bestDist : null,
-                    refs: masterSemesters.map(s => ({ name: s.key, detail: s.distinctions + ' distinctions' }))
-                };
-            }
             case 'perfect_semester': {
                 const perfectSemesters = semesterStats.filter(s => s.count >= 2 && s.distinctions === s.count);
                 return {
@@ -200,14 +157,6 @@ function updateAchievements() {
                     hint: '',
                     distance: null,
                     refs: perfectSemesters.map(s => ({ name: s.key, detail: s.distinctions + ' distinctions' }))
-                };
-            }
-            case 'distinction_legend': {
-                const totalDist = semesterStats.reduce((a, s) => a + s.distinctions, 0);
-                return {
-                    earned: totalDist >= 15,
-                    hint: totalDist > 0 && totalDist < 15 ? `${15 - totalDist} more distinction${15 - totalDist !== 1 ? 's' : ''} needed` : '',
-                    distance: totalDist > 0 && totalDist < 15 ? 15 - totalDist : null
                 };
             }
             case 'elite_scholar': {
@@ -218,13 +167,6 @@ function updateAchievements() {
                     distance: bestAvg != null && bestAvg < 75 ? 75 - bestAvg : null,
                     refs: eliteSemesters.map(s => ({ name: s.key, detail: s.avg.toFixed(1) + '%' }))
                 };
-            }
-            case 'improvement': {
-                if (!improvements.length) return { earned: false, hint: '', distance: null };
-                const detail = improvements.map(imp =>
-                    `<div class="achievement-improvement-detail"><strong>+${imp.diff.toFixed(1)}</strong> marks — ${imp.prev.semester} → ${imp.curr.semester}</div>`
-                ).join('');
-                return { earned: true, hint: '', distance: null, earnedDetail: detail, earnedBadge: improvements.length + ' earned' };
             }
         }
     }

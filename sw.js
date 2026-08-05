@@ -1,5 +1,5 @@
-const CACHE_NAME = 'gradelytics-v3';
-const RUNTIME_CACHE = 'gradelytics-runtime-v3';
+const CACHE_NAME = 'gradelytics-v4';
+const RUNTIME_CACHE = 'gradelytics-runtime-v4';
 const OFFLINE_URL = '/index.html';
 
 const CORE_ASSETS = [
@@ -68,7 +68,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (url.origin !== self.location.origin) {
-    event.respondWith(cacheFirstCrossOrigin(request));
+    event.respondWith(networkFirstCrossOrigin(request));
     return;
   }
 
@@ -90,15 +90,17 @@ async function networkFirst(request) {
   }
 }
 
-async function cacheFirstCrossOrigin(request) {
+async function networkFirstCrossOrigin(request) {
+  // Never serve a stale cached response for API/data reads (e.g. Supabase):
+  // hit the network first and only fall back to the cache when offline.
   const cache = await caches.open(RUNTIME_CACHE);
-  const cached = await cache.match(request);
-  if (cached) return cached;
   try {
     const response = await fetch(request);
     if (response.ok) cache.put(request, response.clone());
     return response;
   } catch (err) {
+    const cached = await cache.match(request);
+    if (cached) return cached;
     return new Response('You are offline.', { status: 503, statusText: 'Offline' });
   }
 }

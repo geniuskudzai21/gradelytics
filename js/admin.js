@@ -22,15 +22,11 @@
         gold: 'Gold',
         silver: 'Silver',
         bronze: 'Bronze',
-        personal_best: 'New Personal Best',
         best_semester: 'Best Semester Ever',
         super_distinction: 'Super Distinction',
         highest_mark: 'Highest Module Mark',
-        distinction_master: 'Distinction Master',
         perfect_semester: 'Perfect Semester',
-        distinction_legend: 'Distinction Legend',
-        elite_scholar: 'Elite Scholar',
-        improvement: 'Rising Star'
+        elite_scholar: 'Elite Scholar'
     };
 
     function isDark() {
