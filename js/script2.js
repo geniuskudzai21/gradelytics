@@ -147,17 +147,20 @@ function updateAchievements() {
                 return {
                     earned: !!rec && diff > 0,
                     hint: rec && diff < 0 ? `${(-diff).toFixed(1)} from your best average of ${rec.prev.toFixed(1)}%` : '',
-                    distance: rec && diff < 0 ? -diff : null
+                    distance: rec && diff < 0 ? -diff : null,
+                    refs: top ? sortedModules.filter(m => m.mark === top.mark).map(m => ({ name: m.name, detail: m.mark })) : []
                 };
             }
             case 'best_semester': {
                 if (bestAvg == null) return { earned: false, hint: '', distance: null };
                 const rec = beatRecord('best_sem_avg', bestAvg);
                 const diff = rec ? bestAvg - rec.prev : null;
+                const bestSem = semesterStats.find(s => s.avg === bestAvg);
                 return {
                     earned: !!rec && diff > 0,
                     hint: rec && diff < 0 ? `${(-diff).toFixed(1)} from your best semester of ${rec.prev.toFixed(1)}%` : '',
-                    distance: rec && diff < 0 ? -diff : null
+                    distance: rec && diff < 0 ? -diff : null,
+                    refs: bestSem ? [{ name: bestSem.key, detail: bestAvg.toFixed(1) + '%' }] : []
                 };
             }
             case 'super_distinction': {
@@ -166,7 +169,8 @@ function updateAchievements() {
                     hint: top && top.mark < 90
                         ? `${Math.ceil(90 - top.mark)} mark${Math.ceil(90 - top.mark) !== 1 ? 's' : ''} away — ${top.name} (${top.mark})`
                         : '',
-                    distance: top && top.mark < 90 ? 90 - top.mark : null
+                    distance: top && top.mark < 90 ? 90 - top.mark : null,
+                    refs: sortedModules.filter(m => m.mark >= 90).map(m => ({ name: m.name, detail: m.mark }))
                 };
             }
             case 'highest_mark': {
@@ -176,19 +180,27 @@ function updateAchievements() {
                 return {
                     earned: !!rec && diff > 0,
                     hint: rec && diff < 0 ? `${-diff} from your best mark of ${rec.prev}` : '',
-                    distance: rec && diff < 0 ? -diff : null
+                    distance: rec && diff < 0 ? -diff : null,
+                    refs: sortedModules.filter(m => m.mark === top.mark).map(m => ({ name: m.name, detail: m.mark }))
                 };
             }
             case 'distinction_master': {
+                const masterSemesters = semesterStats.filter(s => s.distinctions >= 5);
                 return {
                     earned: bestDist >= 5,
                     hint: bestDist > 0 && bestDist < 5 ? `${5 - bestDist} more distinction${5 - bestDist !== 1 ? 's' : ''} needed in your best semester` : '',
-                    distance: bestDist > 0 && bestDist < 5 ? 5 - bestDist : null
+                    distance: bestDist > 0 && bestDist < 5 ? 5 - bestDist : null,
+                    refs: masterSemesters.map(s => ({ name: s.key, detail: s.distinctions + ' distinctions' }))
                 };
             }
             case 'perfect_semester': {
-                const perfect = semesterStats.some(s => s.count >= 2 && s.distinctions === s.count);
-                return { earned: perfect, hint: '', distance: null };
+                const perfectSemesters = semesterStats.filter(s => s.count >= 2 && s.distinctions === s.count);
+                return {
+                    earned: perfectSemesters.length > 0,
+                    hint: '',
+                    distance: null,
+                    refs: perfectSemesters.map(s => ({ name: s.key, detail: s.distinctions + ' distinctions' }))
+                };
             }
             case 'distinction_legend': {
                 const totalDist = semesterStats.reduce((a, s) => a + s.distinctions, 0);
@@ -199,10 +211,12 @@ function updateAchievements() {
                 };
             }
             case 'elite_scholar': {
+                const eliteSemesters = semesterStats.filter(s => s.avg > 75);
                 return {
                     earned: !!(bestAvg != null && bestAvg > 75),
                     hint: bestAvg != null && bestAvg <= 75 ? `Best semester average: ${bestAvg.toFixed(1)}% (need 75%)` : '',
-                    distance: bestAvg != null && bestAvg < 75 ? 75 - bestAvg : null
+                    distance: bestAvg != null && bestAvg < 75 ? 75 - bestAvg : null,
+                    refs: eliteSemesters.map(s => ({ name: s.key, detail: s.avg.toFixed(1) + '%' }))
                 };
             }
             case 'improvement': {
@@ -233,7 +247,14 @@ function updateAchievements() {
 
         let detailHtml = '';
         if (isEarned) {
-            if (result.earnedDetail) {
+            if (result.refs && result.refs.length) {
+                const chips = result.refs.map(r =>
+                    `<span class="achievement-module-chip">${r.name} <strong>${r.detail}</strong></span>`
+                ).join('');
+                const more = result.refsMore ? `<span class="achievement-module-chip">+${result.refsMore} more</span>` : '';
+                const unlockDate = unlockedState[def.key];
+                detailHtml = `<div class="achievement-modules">${chips}${more}</div>${unlockDate ? `<span class="achievement-earned-date">Earned ${formatUnlockDate(unlockDate)}</span>` : ''}`;
+            } else if (result.earnedDetail) {
                 detailHtml = result.earnedDetail;
             } else {
                 const unlockDate = unlockedState[def.key];

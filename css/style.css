@@ -2194,7 +2194,7 @@ section.active {
     padding: 4px 12px;
     font-size: 13px;
     background: var(--surface-alt);
-    border-radius: var(--radius-pill);
+    border-radius: var(--radius-sm);
     color: var(--text);
 }
 
