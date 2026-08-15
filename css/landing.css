@@ -646,67 +646,6 @@ body {
 .cta-banner-inner .btn { position: relative; }
 
 /* ═══════════════════════════════════════════════════════
-   FAQ
-   ═══════════════════════════════════════════════════════ */
-.faq {
-    padding: 80px 0;
-    background: #0f1218;
-}
-.faq-grid {
-    max-width: 700px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-3);
-}
-.faq-item {
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: var(--radius-lg);
-    background: rgba(255,255,255,0.02);
-    overflow: hidden;
-    transition: all 0.3s ease;
-    opacity: 0;
-    transform: translateY(15px);
-}
-.faq-item.in-view {
-    opacity: 1;
-    transform: translateY(0);
-}
-.faq-item[open] {
-    border-color: rgba(var(--color-primary-rgb), 0.2);
-    background: rgba(var(--color-primary-rgb), 0.03);
-}
-.faq-item summary {
-    padding: var(--sp-4) var(--sp-5);
-    font-size: 15px;
-    font-weight: 600;
-    color: #fff;
-    cursor: pointer;
-    list-style: none;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-family: var(--font-heading);
-}
-.faq-item summary::-webkit-details-marker { display: none; }
-.faq-item summary::after {
-    content: '\276F';
-    font-size: 12px;
-    color: rgba(255,255,255,0.25);
-    transition: transform 0.2s;
-}
-.faq-item[open] summary::after {
-    transform: rotate(90deg);
-    color: var(--color-primary);
-}
-.faq-item p {
-    padding: 0 var(--sp-5) var(--sp-4);
-    font-size: 14px;
-    color: rgba(255,255,255,0.45);
-    line-height: 1.7;
-}
-
-/* ═══════════════════════════════════════════════════════
    Footer
    ═══════════════════════════════════════════════════════ */
 .site-footer {
@@ -850,7 +789,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
     .hero-float, .hero-orb, .hero-text > *, .hero-visual,
     .hero-ctas .btn-primary::before, .cta-banner-inner .btn-primary::before,
-    .pain-card, .step-card, .feature-card--large, .faq-item {
+    .pain-card, .step-card, .feature-card--large {
         animation: none !important;
         opacity: 1;
         transform: none;

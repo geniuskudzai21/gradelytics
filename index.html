@@ -28,7 +28,6 @@
                 <nav class="header-nav">
                     <a href="#how-it-works" class="header-nav-link">How It Works</a>
                     <a href="#features" class="header-nav-link">Features</a>
-                    <a href="#faq" class="header-nav-link">FAQ</a>
                 </nav>
                 <a href="pages/dashboard.html" class="btn btn-primary btn-sm">Get Started</a>
             </div>
@@ -39,7 +38,6 @@
         <div class="header-mobile-nav" id="header-mobile-nav">
             <a href="#how-it-works" class="header-mobile-link">How It Works</a>
             <a href="#features" class="header-mobile-link">Features</a>
-            <a href="#faq" class="header-mobile-link">FAQ</a>
             <a href="pages/dashboard.html" class="header-mobile-link" style="color:var(--color-primary)">Get Started</a>
         </div>
     </header>
@@ -297,42 +295,6 @@
         </div>
     </section>
 
-    <!-- ── FAQ ── -->
-    <section class="faq" id="faq">
-        <div class="container">
-            <div class="section-heading">
-                <span class="section-tag">FAQ</span>
-                <h2>Common questions</h2>
-            </div>
-            <div class="faq-grid">
-                <details class="faq-item">
-                    <summary>Is it really free?</summary>
-                    <p>Yes. Gradelytics is 100% free with no hidden fees and no trials. A free account lets you back up and sync your data across devices.</p>
-                </details>
-                <details class="faq-item">
-                    <summary>Do I need to create an account?</summary>
-                    <p>A free account gives you cloud sync, so your grades, chat history, and achievements are available on any device and never lost. You can also keep using the app without an account — your data is then stored locally in your browser only.</p>
-                </details>
-                <details class="faq-item">
-                    <summary>How does the AI extraction work?</summary>
-                    <p>Upload a screenshot of your results table and our AI vision model reads it, extracts every module name, mark, and grade, and adds them to your dashboard automatically.</p>
-                </details>
-                <details class="faq-item">
-                    <summary>Is my data private?</summary>
-                    <p>Yes. With an account, your data is stored securely in Supabase and protected by row-level security — only you can access your own grades, chat, and achievements. Without an account, everything stays in your browser's localStorage.</p>
-                </details>
-                <details class="faq-item">
-                    <summary>How accurate are the predictions?</summary>
-                    <p>AI predictions are based on your historical performance patterns. They're designed as guidance, not guarantees — use them as one input alongside your own judgement.</p>
-                </details>
-                <details class="faq-item">
-                    <summary>What if I add the wrong data?</summary>
-                    <p>You can edit or delete any module at any time. There's also a "Delete All" button if you want to start fresh.</p>
-                </details>
-            </div>
-        </div>
-    </section>
-
     <!-- ── Footer ── -->
     <footer class="site-footer">
         <div class="container">
@@ -353,7 +315,6 @@
                     <div class="footer-links">
                         <a href="pages/dashboard.html">Dashboard</a>
                         <a href="#features">Features</a>
-                        <a href="#faq">FAQ</a>
                     </div>
                 </div>
                 <div class="footer-col">
@@ -399,7 +360,7 @@
             });
         }, { threshold: 0.1 });
 
-        document.querySelectorAll('.feature-card, .step-card, .pain-card, .faq-item').forEach((el, i) => {
+        document.querySelectorAll('.feature-card, .step-card, .pain-card').forEach((el, i) => {
             if (el.classList.contains('feature-card') || el.classList.contains('pain-card')) {
                 el.style.transitionDelay = (i % 3) * 80 + 'ms';
             }
