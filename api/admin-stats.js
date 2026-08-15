@@ -37,9 +37,9 @@ export default async function handler(req, res) {
         const users = usersData.users || (usersData.data && usersData.data.users) || [];
 
         const [modules, chat, unlocks] = await Promise.all([
-            fetchRows(`${base}/rest/v1/modules?select=user_id,name,mark,grade`, headers),
-            fetchRows(`${base}/rest/v1/chat_messages?select=user_id`, headers),
-            fetchRows(`${base}/rest/v1/achievement_unlocks?select=user_id,unlock_key`, headers)
+            fetchRows(`${base}/rest/v1/modules?select=user_id,name,year,part,semester,mark,grade,created_at`, headers),
+            fetchRows(`${base}/rest/v1/chat_messages?select=user_id,role,created_at`, headers),
+            fetchRows(`${base}/rest/v1/achievement_unlocks?select=user_id,unlock_key,unlocked_at`, headers)
         ]);
 
         const modCount = countBy(modules, 'user_id');
@@ -63,7 +63,9 @@ export default async function handler(req, res) {
             };
         });
 
-        // Performance & engagement insights
+        const activeCount = rows.filter(r => r.active).length;
+
+        // ── Performance & engagement ──
         const marks = modules.filter(m => m.mark != null && Number(m.mark) >= 0).map(m => Number(m.mark));
         const overallAverage = marks.length
             ? +(marks.reduce((s, x) => s + x, 0) / marks.length).toFixed(1)
@@ -83,7 +85,7 @@ export default async function handler(req, res) {
         });
         const topModules = Object.entries(moduleCounts)
             .sort((a, b) => b[1] - a[1])
-            .slice(0, 5)
+            .slice(0, 8)
             .map(([name, count]) => ({ name, count }));
 
         const achievementBreakdown = {};
@@ -92,26 +94,93 @@ export default async function handler(req, res) {
             achievementBreakdown[key] = (achievementBreakdown[key] || 0) + 1;
         });
 
-        const activeCount = rows.filter(r => r.active).length;
+        // ── Average mark per academic year ──
+        const byYear = {};
+        modules.forEach(m => {
+            if (m.year != null && m.mark != null && !isNaN(Number(m.mark))) {
+                const y = String(m.year).trim();
+                if (y) (byYear[y] = byYear[y] || []).push(Number(m.mark));
+            }
+        });
+        const averageMarkByYear = Object.entries(byYear)
+            .sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true }))
+            .map(([year, list]) => ({
+                year,
+                average: +(list.reduce((s, x) => s + x, 0) / list.length).toFixed(1),
+                count: list.length
+            }));
+
+        // ── Time series (90 days) for signups, modules added and messages ──
+        const series = {
+            signups: dailySeries(rows, 'created_at', 90),
+            modules: dailySeries(modules, 'created_at', 90),
+            messages: dailySeries(chat, 'created_at', 90)
+        };
+
+        // ── Trend deltas (last 7d vs previous 7d, last 30d vs previous 30d) ──
+        const now = Date.now();
+        const countSince = (list, days) => list.filter(r => {
+            const t = r.created_at ? new Date(r.created_at).getTime() : NaN;
+            return !isNaN(t) && t >= now - days * 86400000;
+        }).length;
+        const delta = (cur, prev) => prev > 0 ? Math.round(((cur - prev) / prev) * 100) : (cur > 0 ? 100 : 0);
+
+        const users7d = countSince(rows, 7);
+        const usersPrev7d = countSince(rows, 14) - users7d;
+        const users30d = countSince(rows, 30);
+        const usersPrev30d = countSince(rows, 60) - users30d;
+        const modules7d = countSince(modules, 7);
+        const modulesPrev7d = countSince(modules, 14) - modules7d;
+        const messages7d = countSince(chat, 7);
+        const messagesPrev7d = countSince(chat, 14) - messages7d;
 
         res.status(200).json({
             totalUsers: rows.length,
             activeUsers: activeCount,
+            activeUserPct: rows.length ? Math.round((activeCount / rows.length) * 100) : 0,
             totalModules: modules.length,
             totalChatMessages: chat.length,
             totalAchievements: unlocks.length,
-            signupsByDay: signupsByDay(rows, 30),
             overallAverage,
             mostCommonGrade,
             gradeDistribution,
             topModules,
             achievementBreakdown,
+            averageMarkByYear,
             avgMessagesPerActiveUser: activeCount ? +(chat.length / activeCount).toFixed(1) : 0,
+            signupsByDay: series.signups.slice(-30),
+            series,
+            trends: {
+                users7d, usersPrev7d, users7dDelta: delta(users7d, usersPrev7d),
+                users30d, usersPrev30d, users30dDelta: delta(users30d, usersPrev30d),
+                modules7d, modulesPrev7d, modules7dDelta: delta(modules7d, modulesPrev7d),
+                messages7d, messagesPrev7d, messages7dDelta: delta(messages7d, messagesPrev7d)
+            },
+            generatedAt: new Date().toISOString(),
             users: rows
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
+}
+
+function dailySeries(list, dateField, days) {
+    const out = [];
+    const map = new Map();
+    list.forEach(r => {
+        const t = r[dateField] ? new Date(r[dateField]).getTime() : NaN;
+        if (isNaN(t)) return;
+        const key = new Date(t).toISOString().slice(0, 10);
+        map.set(key, (map.get(key) || 0) + 1);
+    });
+    const now = new Date();
+    for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        out.push({ day: key, count: map.get(key) || 0 });
+    }
+    return out;
 }
 
 async function fetchRows(url, headers) {
@@ -134,24 +203,4 @@ function safeEqual(a, b) {
     const bufB = Buffer.from(String(b));
     if (bufA.length !== bufB.length) return false;
     return timingSafeEqual(bufA, bufB);
-}
-
-function signupsByDay(rows, days) {
-    const out = [];
-    const map = new Map();
-    const now = new Date();
-    rows.forEach(r => {
-        if (!r.created_at) return;
-        const d = new Date(r.created_at);
-        if (isNaN(d.getTime())) return;
-        const key = d.toISOString().slice(0, 10);
-        map.set(key, (map.get(key) || 0) + 1);
-    });
-    for (let i = days - 1; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - i);
-        const key = d.toISOString().slice(0, 10);
-        out.push({ day: key, count: map.get(key) || 0 });
-    }
-    return out;
 }

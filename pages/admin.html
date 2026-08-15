@@ -23,11 +23,15 @@
                 <img src="../images/logo.png" alt="Gradelytics" class="sidebar-logo">
                 <div class="sidebar-brand-text">
                     <strong>Gradelytics</strong>
+                    <span>Admin Console</span>
                 </div>
             </div>
 
             <nav class="sidebar-nav">
+                <span class="sidebar-section">Monitor</span>
                 <a href="#" class="sidebar-link active" data-view="overview"><i class='bx bx-grid-alt'></i> Overview</a>
+                <a href="#" class="sidebar-link" data-view="analytics"><i class='bx bx-line-chart'></i> Analytics</a>
+                <span class="sidebar-section">Manage</span>
                 <a href="#" class="sidebar-link" data-view="users"><i class='bx bxs-user-account'></i> Users</a>
             </nav>
 
@@ -47,49 +51,67 @@
 
         <!-- ── Main ── -->
         <main class="content">
+            <div class="topbar">
+                <div class="topbar-title">
+                    <h1 id="page-title">Overview</h1>
+                    <p id="page-subtitle">High-level health and activity across your platform.</p>
+                </div>
+                <div class="topbar-actions">
+                    <span id="last-updated" class="last-updated"></span>
+                    <label class="auto-refresh" title="Refresh automatically every 60 seconds">
+                        <input type="checkbox" id="auto-refresh">
+                        <span class="switch-slider"></span>
+                        <span class="auto-refresh-label">Auto</span>
+                    </label>
+                    <button class="btn btn-outline" id="global-refresh"><i class='bx bx-refresh'></i> Refresh</button>
+                </div>
+            </div>
+
             <div id="admin-status" class="admin-status"></div>
 
             <!-- Overview -->
             <section id="view-overview" class="view">
-                <div class="view-header">
-                    <div>
-                        <h1>Overview</h1>
-                        <p>High-level statistics across every user.</p>
+                <div class="kpi-grid" id="kpi-grid"></div>
+
+                <div class="admin-panel">
+                    <div class="panel-head">
+                        <h2><i class='bx bx-user-plus'></i> New signups</h2>
+                        <div class="segmented" id="signup-period">
+                            <button class="segmented-btn" data-period="7">7D</button>
+                            <button class="segmented-btn active" data-period="30">30D</button>
+                            <button class="segmented-btn" data-period="90">90D</button>
+                        </div>
                     </div>
-                    <button class="btn btn-outline" id="overview-refresh"><i class='bx bx-refresh'></i> Refresh</button>
+                    <div class="chart-wrap chart-wrap--md">
+                        <canvas id="chart-signups"></canvas>
+                    </div>
                 </div>
 
-                <div class="stat-grid">
-                    <div class="stat-card">
-                        <span class="stat-label">Total Users</span>
-                        <strong id="stat-users">&ndash;</strong>
+                <div class="grid-2">
+                    <div class="admin-panel">
+                        <h2><i class='bx bx-pie-chart-alt-2'></i> Grade distribution</h2>
+                        <div class="chart-wrap">
+                            <canvas id="chart-grade"></canvas>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <span class="stat-label">Active Users</span>
-                        <strong id="stat-active">&ndash;</strong>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-label">Modules</span>
-                        <strong id="stat-modules">&ndash;</strong>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-label">Chat Messages</span>
-                        <strong id="stat-chat">&ndash;</strong>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-label">Average Mark</span>
-                        <strong id="stat-average">&ndash;</strong>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-label">Msgs / Active User</span>
-                        <strong id="stat-msg-active">&ndash;</strong>
+                    <div class="admin-panel">
+                        <h2><i class='bx bx-bar-chart-alt-2'></i> Most tracked modules</h2>
+                        <div class="chart-wrap">
+                            <canvas id="chart-modules"></canvas>
+                        </div>
                     </div>
                 </div>
 
                 <div class="admin-panel">
-                    <h2><i class='bx bx-line-chart'></i> New signups &mdash; last 30 days</h2>
-                    <div class="chart-wrap">
-                        <canvas id="admin-chart"></canvas>
+                    <div class="panel-head">
+                        <h2><i class='bx bx-activity'></i> Platform activity &mdash; last 30 days</h2>
+                        <div class="legend-inline">
+                            <span class="legend-dot legend-dot--primary"></span> Modules added
+                            <span class="legend-dot legend-dot--accent"></span> Chat messages
+                        </div>
+                    </div>
+                    <div class="chart-wrap chart-wrap--md">
+                        <canvas id="chart-activity"></canvas>
                     </div>
                 </div>
 
@@ -116,6 +138,40 @@
                 </div>
             </section>
 
+            <!-- Analytics -->
+            <section id="view-analytics" class="view" hidden>
+                <div class="insight-row" id="insight-row"></div>
+
+                <div class="admin-panel">
+                    <h2><i class='bx bx-line-chart'></i> Average mark by academic year</h2>
+                    <div class="chart-wrap chart-wrap--md">
+                        <canvas id="chart-avg-year"></canvas>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="admin-panel">
+                        <h2><i class='bx bx-trophy'></i> Achievement breakdown</h2>
+                        <div class="chart-wrap">
+                            <canvas id="chart-achievements"></canvas>
+                        </div>
+                    </div>
+                    <div class="admin-panel">
+                        <h2><i class='bx bx-pie-chart-alt'></i> Grade distribution</h2>
+                        <div class="chart-wrap">
+                            <canvas id="chart-grade-detail"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="admin-panel">
+                    <h2><i class='bx bx-trending-up'></i> Cumulative user growth</h2>
+                    <div class="chart-wrap chart-wrap--md">
+                        <canvas id="chart-growth"></canvas>
+                    </div>
+                </div>
+            </section>
+
             <!-- Users -->
             <section id="view-users" class="view" hidden>
                 <div class="view-header">
@@ -123,7 +179,6 @@
                         <h1>Users</h1>
                         <p>Browse, inspect, edit and remove accounts.</p>
                     </div>
-                    <button class="btn btn-outline" id="users-refresh"><i class='bx bx-refresh'></i> Refresh</button>
                 </div>
 
                 <div class="admin-panel">
