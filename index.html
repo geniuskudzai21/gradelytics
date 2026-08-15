@@ -29,7 +29,7 @@
                     <a href="#how-it-works" class="header-nav-link">How It Works</a>
                     <a href="#features" class="header-nav-link">Features</a>
                 </nav>
-                <a href="pages/dashboard.html" class="btn btn-primary btn-sm">Get Started</a>
+                <a href="pages/auth.html" class="btn btn-primary btn-sm">Get Started</a>
             </div>
             <button class="header-mobile-toggle" id="header-mobile-toggle" aria-label="Menu">
                 <i class='bx bx-menu'></i>
@@ -38,7 +38,7 @@
         <div class="header-mobile-nav" id="header-mobile-nav">
             <a href="#how-it-works" class="header-mobile-link">How It Works</a>
             <a href="#features" class="header-mobile-link">Features</a>
-            <a href="pages/dashboard.html" class="header-mobile-link" style="color:var(--color-primary)">Get Started</a>
+            <a href="pages/auth.html" class="header-mobile-link" style="color:var(--color-primary)">Get Started</a>
         </div>
     </header>
 
@@ -215,7 +215,8 @@
                 <span class="section-tag">Features</span>
                 <h2>Everything you need to stay on track</h2>
             </div>
-            <div class="features-grid">
+            <div class="features-marquee">
+            <div class="features-grid" id="features-track">
                 <div class="feature-card feature-card--large">
                     <div class="feature-icon feature-icon--primary"><i class='bx bx-camera'></i></div>
                     <h3>Screenshot Extraction</h3>
@@ -278,6 +279,7 @@
                     <p>Sign in once and your grades, chat history, and achievements follow you to any device — secured with row-level protection.</p>
                 </div>
             </div>
+            </div>
         </div>
     </section>
 
@@ -288,7 +290,7 @@
                 <div class="cta-glow"></div>
                 <h2>Ready to know exactly where you stand?</h2>
                 <p>Stop guessing. Start tracking. It takes 30 seconds to get started.</p>
-                <a href="pages/dashboard.html" class="btn btn-primary btn-lg">
+                <a href="pages/auth.html" class="btn btn-primary btn-lg">
                     <i class='bx bx-rocket'></i> Get Started
                 </a>
             </div>
@@ -313,7 +315,7 @@
                 <div class="footer-col">
                     <h4 class="footer-col-title">Product</h4>
                     <div class="footer-links">
-                        <a href="pages/dashboard.html">Dashboard</a>
+                        <a href="pages/auth.html">Get Started</a>
                         <a href="#features">Features</a>
                     </div>
                 </div>
@@ -327,7 +329,7 @@
                 <div class="footer-col">
                     <h4 class="footer-col-title">Contact</h4>
                     <div class="footer-links">
-                        <a href="mailto:hello@gradelytics.com"><i class='bx bx-envelope'></i> hello@gradelytics.com</a>
+                        <a href="mailto:eusingsungie@gmail.com"><i class='bx bx-envelope'></i> hello@gradelytics.com</a>
                         <a href="#" title="WhatsApp"><i class='bx bxl-whatsapp'></i> WhatsApp Support</a>
                     </div>
                 </div>
@@ -360,12 +362,22 @@
             });
         }, { threshold: 0.1 });
 
-        document.querySelectorAll('.feature-card, .step-card, .pain-card').forEach((el, i) => {
-            if (el.classList.contains('feature-card') || el.classList.contains('pain-card')) {
+        document.querySelectorAll('.step-card, .pain-card, .features-marquee').forEach((el, i) => {
+            if (el.classList.contains('pain-card')) {
                 el.style.transitionDelay = (i % 3) * 80 + 'ms';
             }
             observer.observe(el);
         });
+
+        const featuresTrack = document.getElementById('features-track');
+        if (featuresTrack) {
+            const cards = Array.from(featuresTrack.children);
+            if (cards.length) {
+                cards.forEach(card => {
+                    featuresTrack.appendChild(card.cloneNode(true));
+                });
+            }
+        }
 
         const animateCount = (el) => {
             const target = parseInt(el.dataset.count, 10);
