@@ -251,7 +251,6 @@
                 .slice(0, 8));
         } else if (currentView === 'analytics') {
             renderInsights();
-            renderAvgYear();
             renderGradeDetail();
             renderGrowth();
             renderUsage();
@@ -642,56 +641,6 @@
                 '</div>' +
             '</div>'
         ).join('');
-    }
-
-    function renderAvgYear() {
-        if (!stats) return;
-        const list = stats.averageMarkByYear || [];
-        makeChart('chart-avg-year', {
-            type: 'bar',
-            data: {
-                labels: list.map(y => y.year),
-                datasets: [{
-                    label: 'Average mark %',
-                    data: list.map(y => y.average),
-                    backgroundColor: list.map(y => {
-                        const v = y.average;
-                        return v >= 80 ? 'rgba(34,166,76,0.75)' : (v >= 65 ? 'rgba(20,201,174,0.75)' : (v >= 50 ? 'rgba(29,111,224,0.75)' : 'rgba(220,38,38,0.65)'));
-                    }),
-                    borderRadius: 4,
-                    maxBarThickness: 42
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: Object.assign(tooltipTheme(), {
-                        callbacks: {
-                            afterBody: function (items) {
-                                const i = items && items[0] && items[0].dataIndex;
-                                const row = list[i];
-                                return row ? 'Based on ' + row.count + ' module record' + (row.count === 1 ? '' : 's') : '';
-                            }
-                        }
-                    })
-                },
-                scales: {
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: chartTextColor() }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        suggestedMax: 100,
-                        ticks: { precision: 0, color: chartTextColor(), callback: function (v) { return v + '%'; } },
-                        grid: { color: chartGridColor() }
-                    }
-                }
-            }
-        });
     }
 
     function renderGradeDetail() {
