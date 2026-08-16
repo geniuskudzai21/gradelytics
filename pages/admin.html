@@ -128,7 +128,6 @@
                                     <th>Joined</th>
                                     <th>Modules</th>
                                     <th>Chat</th>
-                                    <th>Achievements</th>
                                     <th>Time</th>
                                     <th>Status</th>
                                 </tr>
@@ -150,18 +149,10 @@
                     </div>
                 </div>
 
-                <div class="grid-2">
-                    <div class="admin-panel">
-                        <h2><i class='bx bx-trophy'></i> Achievement breakdown</h2>
-                        <div class="chart-wrap">
-                            <canvas id="chart-achievements"></canvas>
-                        </div>
-                    </div>
-                    <div class="admin-panel">
-                        <h2><i class='bx bx-pie-chart-alt'></i> Grade distribution</h2>
-                        <div class="chart-wrap">
-                            <canvas id="chart-grade-detail"></canvas>
-                        </div>
+                <div class="admin-panel">
+                    <h2><i class='bx bx-pie-chart-alt'></i> Grade distribution</h2>
+                    <div class="chart-wrap">
+                        <canvas id="chart-grade-detail"></canvas>
                     </div>
                 </div>
 
@@ -206,7 +197,6 @@
                                     <th>Joined</th>
                                     <th>Modules</th>
                                     <th>Chat</th>
-                                    <th>Achievements</th>
                                     <th>Time</th>
                                     <th>Status</th>
                                     <th class="col-actions">Actions</th>
@@ -242,10 +232,6 @@
                         <strong id="detail-stat-chat">&ndash;</strong>
                     </div>
                     <div class="stat-card stat-card--small">
-                        <span class="stat-label">Achievements</span>
-                        <strong id="detail-stat-achievements">&ndash;</strong>
-                    </div>
-                    <div class="stat-card stat-card--small">
                         <span class="stat-label">Average</span>
                         <strong id="detail-stat-average">&ndash;</strong>
                     </div>
@@ -277,11 +263,6 @@
                 <div class="admin-panel">
                     <h2><i class='bx bx-chat'></i> Messages</h2>
                     <div id="detail-chat" class="chat-log"></div>
-                </div>
-
-                <div class="admin-panel">
-                    <h2><i class='bx bx-medal'></i> Achievements</h2>
-                    <div id="detail-achievements" class="achievement-grid"></div>
                 </div>
             </section>
         </main>

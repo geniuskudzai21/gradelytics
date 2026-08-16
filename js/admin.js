@@ -22,17 +22,6 @@
         document.documentElement.setAttribute('data-theme', savedTheme);
     } catch (e) { /* ignore */ }
 
-    const ACHIEVEMENT_LABELS = {
-        gold: 'Gold',
-        silver: 'Silver',
-        bronze: 'Bronze',
-        best_semester: 'Best Semester Ever',
-        super_distinction: 'Super Distinction',
-        highest_mark: 'Highest Module Mark',
-        perfect_semester: 'Perfect Semester',
-        elite_scholar: 'Elite Scholar'
-    };
-
     const VIEW_META = {
         overview: { title: 'Overview', subtitle: 'High-level health and activity across your platform.' },
         analytics: { title: 'Analytics', subtitle: 'Deep-dive into engagement, results and growth trends.' },
@@ -258,7 +247,6 @@
         } else if (currentView === 'analytics') {
             renderInsights();
             renderAvgYear();
-            renderAchievements();
             renderGradeDetail();
             renderGrowth();
             renderUsage();
@@ -638,7 +626,6 @@
             { icon: 'bx-chat', label: 'Messages / active user', value: stats.avgMessagesPerActiveUser || '0' },
             { icon: 'bx-user-plus', label: 'New users (30d)', value: fmt((stats.trends || {}).users30d) },
             { icon: 'bx-user-check', label: 'Engagement', value: (stats.activeUserPct || 0) + '%' },
-            { icon: 'bx-medal', label: 'Achievements', value: fmt(stats.totalAchievements) },
             { icon: 'bx-timer', label: 'Time on app (7d)', value: fmtDuration((stats.trends || {}).usage7d) }
         ];
         row.innerHTML = items.map(i => '' +
@@ -699,25 +686,6 @@
                     }
                 }
             }
-        });
-    }
-
-    function renderAchievements() {
-        if (!stats) return;
-        const breakdown = stats.achievementBreakdown || {};
-        const keys = Object.keys(breakdown).sort((a, b) => breakdown[b] - breakdown[a]);
-        makeChart('chart-achievements', {
-            type: 'doughnut',
-            data: {
-                labels: keys.map(k => ACHIEVEMENT_LABELS[k] || k),
-                datasets: [{
-                    data: keys.map(k => breakdown[k]),
-                    backgroundColor: keys.map(k => colorFor(ACHIEVEMENT_LABELS[k] || k)),
-                    borderColor: doughnutBorder(),
-                    borderWidth: 2
-                }]
-            },
-            options: doughnutOptions()
         });
     }
 
@@ -802,7 +770,7 @@
         if (!tbody) return;
         tbody.innerHTML = '';
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted)">No users yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">No users yet.</td></tr>';
             return;
         }
         list.forEach(u => {
@@ -814,7 +782,6 @@
                 '<td>' + formatDate(u.created_at) + '</td>' +
                 '<td>' + u.modules + '</td>' +
                 '<td>' + u.chat_messages + '</td>' +
-                '<td>' + u.achievements + '</td>' +
                 '<td>' + fmtDuration(u.time_spent_seconds) + '</td>' +
                 '<td>' + statusBadge(u) + '</td>';
             tbody.appendChild(tr);
@@ -837,7 +804,7 @@
         tbody.innerHTML = '';
 
         if (!filtered.length) {
-            tbody.innerHTML = '<tr><td colspan="9" style="color:var(--muted)">No matching users.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="color:var(--muted)">No matching users.</td></tr>';
             return;
         }
 
@@ -849,7 +816,6 @@
                 '<td>' + formatDate(u.created_at) + '</td>' +
                 '<td>' + u.modules + '</td>' +
                 '<td>' + u.chat_messages + '</td>' +
-                '<td>' + u.achievements + '</td>' +
                 '<td>' + fmtDuration(u.time_spent_seconds) + '</td>' +
                 '<td>' + statusBadge(u) + '</td>' +
                 '<td><div class="row-actions">' +
@@ -894,12 +860,10 @@
             setText('detail-email', u.email || 'No email');
             setText('detail-stat-modules', data.modules.length);
             setText('detail-stat-chat', data.chat.length);
-            setText('detail-stat-achievements', data.achievements.length);
             setText('detail-stat-average', average(data.modules));
             setText('detail-stat-time', fmtDuration(u.time_spent_seconds));
             renderDetailModules(data.modules || []);
             renderDetailChat(data.chat || []);
-            renderDetailAchievements(data.achievements || []);
             showStatus('');
         } catch (err) {
             showStatus(err.message, 'error');
@@ -948,26 +912,6 @@
             container.appendChild(bubble);
         });
         container.scrollTop = container.scrollHeight;
-    }
-
-    function renderDetailAchievements(achievements) {
-        const grid = document.getElementById('detail-achievements');
-        if (!grid) return;
-        grid.innerHTML = '';
-        if (!achievements.length) {
-            grid.innerHTML = '<div class="achievement-empty">No achievements unlocked.</div>';
-            return;
-        }
-        achievements.forEach(a => {
-            const label = ACHIEVEMENT_LABELS[a.unlock_key] || a.unlock_key;
-            const chip = document.createElement('div');
-            chip.className = 'achievement-chip';
-            chip.innerHTML =
-                '<i class="bx bx-trophy"></i>' +
-                '<span>' + escapeHtml(label) + '</span>' +
-                '<em>' + formatDate(a.unlocked_at) + '</em>';
-            grid.appendChild(chip);
-        });
     }
 
     /* ── Edit user ── */
