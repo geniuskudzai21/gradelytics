@@ -129,6 +129,7 @@
                                     <th>Modules</th>
                                     <th>Chat</th>
                                     <th>Achievements</th>
+                                    <th>Time</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -170,6 +171,13 @@
                         <canvas id="chart-growth"></canvas>
                     </div>
                 </div>
+
+                <div class="admin-panel">
+                    <h2><i class='bx bx-timer'></i> Time spent on app per day</h2>
+                    <div class="chart-wrap chart-wrap--md">
+                        <canvas id="chart-usage"></canvas>
+                    </div>
+                </div>
             </section>
 
             <!-- Users -->
@@ -199,6 +207,7 @@
                                     <th>Modules</th>
                                     <th>Chat</th>
                                     <th>Achievements</th>
+                                    <th>Time</th>
                                     <th>Status</th>
                                     <th class="col-actions">Actions</th>
                                 </tr>
@@ -239,6 +248,10 @@
                     <div class="stat-card stat-card--small">
                         <span class="stat-label">Average</span>
                         <strong id="detail-stat-average">&ndash;</strong>
+                    </div>
+                    <div class="stat-card stat-card--small">
+                        <span class="stat-label">Time on app</span>
+                        <strong id="detail-stat-time">&ndash;</strong>
                     </div>
                 </div>
 

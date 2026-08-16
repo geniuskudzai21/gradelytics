@@ -139,6 +139,15 @@
         return Number(n).toLocaleString('en-GB');
     }
 
+    function fmtDuration(totalSeconds) {
+        const s = Number(totalSeconds) || 0;
+        if (s < 60) return s + 's';
+        const hours = Math.floor(s / 3600);
+        const minutes = Math.floor((s % 3600) / 60);
+        if (hours > 0) return hours + 'h ' + minutes + 'm';
+        return minutes + 'm';
+    }
+
     function shortDay(iso) {
         return String(iso || '').slice(5);
     }
@@ -252,6 +261,7 @@
             renderAchievements();
             renderGradeDetail();
             renderGrowth();
+            renderUsage();
         } else if (currentView === 'users') {
             const search = document.getElementById('users-search');
             renderUsers(search ? search.value : '');
@@ -446,6 +456,16 @@
                 sub: 'across ' + fmt(stats.totalModules) + ' module records',
                 spark: avgYears,
                 color: '#F0A83D'
+            },
+            {
+                id: 'time',
+                icon: 'bx-timer',
+                label: 'Time on App',
+                value: fmtDuration(stats.totalTimeSeconds),
+                delta: deltaChip(t.usage7dDelta),
+                sub: fmtDuration(t.usage7d) + ' this week',
+                spark: seriesData('usage').map(r => r.seconds),
+                color: '#B07AE0'
             }
         ];
 
@@ -618,7 +638,8 @@
             { icon: 'bx-chat', label: 'Messages / active user', value: stats.avgMessagesPerActiveUser || '0' },
             { icon: 'bx-user-plus', label: 'New users (30d)', value: fmt((stats.trends || {}).users30d) },
             { icon: 'bx-user-check', label: 'Engagement', value: (stats.activeUserPct || 0) + '%' },
-            { icon: 'bx-medal', label: 'Achievements', value: fmt(stats.totalAchievements) }
+            { icon: 'bx-medal', label: 'Achievements', value: fmt(stats.totalAchievements) },
+            { icon: 'bx-timer', label: 'Time on app (7d)', value: fmtDuration((stats.trends || {}).usage7d) }
         ];
         row.innerHTML = items.map(i => '' +
             '<div class="insight-card">' +
@@ -744,6 +765,36 @@
         });
     }
 
+    function renderUsage() {
+        if (!stats) return;
+        const rows = seriesData('usage');
+        const labels = rows.map(r => shortDay(r.day));
+        const seconds = rows.map(r => r.seconds);
+        const opts = baseOptions({ legend: true });
+        opts.plugins.tooltip.callbacks = {
+            label: function (ctx) { return ' ' + fmtDuration(ctx.raw); }
+        };
+        opts.scales.y.ticks.callback = function (v) {
+            if (v >= 3600 && v % 3600 === 0) return (v / 3600) + 'h';
+            if (v >= 60 && v % 60 === 0) return (v / 60) + 'm';
+            return v;
+        };
+        makeChart('chart-usage', {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Time on app',
+                    data: seconds,
+                    backgroundColor: 'rgba(176,122,224,0.55)',
+                    borderRadius: 3,
+                    maxBarThickness: 18
+                }]
+            },
+            options: opts
+        });
+    }
+
     /* ── Overview users ── */
 
     function renderOverviewUsers(list) {
@@ -751,7 +802,7 @@
         if (!tbody) return;
         tbody.innerHTML = '';
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">No users yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted)">No users yet.</td></tr>';
             return;
         }
         list.forEach(u => {
@@ -764,6 +815,7 @@
                 '<td>' + u.modules + '</td>' +
                 '<td>' + u.chat_messages + '</td>' +
                 '<td>' + u.achievements + '</td>' +
+                '<td>' + fmtDuration(u.time_spent_seconds) + '</td>' +
                 '<td>' + statusBadge(u) + '</td>';
             tbody.appendChild(tr);
         });
@@ -785,7 +837,7 @@
         tbody.innerHTML = '';
 
         if (!filtered.length) {
-            tbody.innerHTML = '<tr><td colspan="8" style="color:var(--muted)">No matching users.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" style="color:var(--muted)">No matching users.</td></tr>';
             return;
         }
 
@@ -798,6 +850,7 @@
                 '<td>' + u.modules + '</td>' +
                 '<td>' + u.chat_messages + '</td>' +
                 '<td>' + u.achievements + '</td>' +
+                '<td>' + fmtDuration(u.time_spent_seconds) + '</td>' +
                 '<td>' + statusBadge(u) + '</td>' +
                 '<td><div class="row-actions">' +
                 '<button class="action-btn" data-action="view" data-id="' + u.id + '" title="View"><i class="bx bx-show"></i></button>' +
@@ -843,6 +896,7 @@
             setText('detail-stat-chat', data.chat.length);
             setText('detail-stat-achievements', data.achievements.length);
             setText('detail-stat-average', average(data.modules));
+            setText('detail-stat-time', fmtDuration(u.time_spent_seconds));
             renderDetailModules(data.modules || []);
             renderDetailChat(data.chat || []);
             renderDetailAchievements(data.achievements || []);

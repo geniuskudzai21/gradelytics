@@ -995,6 +995,7 @@ section.active {
     display: flex;
     align-items: center;
     gap: var(--sp-4);
+    width: 100%;
     transition: all var(--duration-base) var(--ease-out);
     position: relative;
     overflow: hidden;

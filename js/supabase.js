@@ -162,6 +162,8 @@
 
     async function signOut() {
         try { sessionStorage.removeItem('gradelytics_admin_password'); } catch (e) { /* ignore */ }
+        // Flush the pending usage chunk while the session is still valid.
+        await flushUsage(true);
         if (!sb) return;
         await sb.auth.signOut();
     }
@@ -887,6 +889,114 @@
         }
     }
 
+    /* ── Load own usage sessions ── */
+    async function loadUsageSessions() {
+        const userId = currentUserId || await getUserId();
+        if (!userId || !sb) {
+            return { totalSeconds: 0, todaySeconds: 0, sessions: [] };
+        }
+        try {
+            const { data, error } = await sb
+                .from('usage_sessions')
+                .select('started_at, duration_seconds')
+                .eq('user_id', userId)
+                .order('started_at', { ascending: true });
+            if (error || !data) return { totalSeconds: 0, todaySeconds: 0, sessions: [] };
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            const todayTs = todayStart.getTime();
+            let totalSeconds = 0;
+            let todaySeconds = 0;
+            data.forEach(function (s) {
+                const d = Number(s.duration_seconds) || 0;
+                totalSeconds += d;
+                const t = s.started_at ? new Date(s.started_at).getTime() : NaN;
+                if (!isNaN(t) && t >= todayTs) todaySeconds += d;
+            });
+            return { totalSeconds: totalSeconds, todaySeconds: todaySeconds, sessions: data };
+        } catch (err) {
+            return { totalSeconds: 0, todaySeconds: 0, sessions: [] };
+        }
+    }
+
+    /* ── Usage tracking (time on app) ──
+       While a signed-in user keeps the dashboard visible, accumulate active
+       seconds and flush them to usage_sessions in ~60s chunks (and when the
+       tab is hidden or the page unloads). Only runs on the dashboard page;
+       auth, admin and landing views are never counted. */
+    let usageTracking = false;
+    let usageSeconds = 0;
+    let usageChunkStarted = null;
+    let usageTickCount = 0;
+    let usageTimer = null;
+
+    function usageIsVisible() {
+        return document.visibilityState === 'visible' && !document.hidden;
+    }
+
+    async function flushUsage(final) {
+        const seconds = Math.round(usageSeconds);
+        const started = usageChunkStarted || new Date().toISOString();
+        usageSeconds = 0;
+        usageChunkStarted = new Date().toISOString();
+        if (final) stopUsageTracking();
+        if (seconds < 1 || !sb) return;
+        let userId = currentUserId;
+        if (!userId) {
+            const uid = await getUserId();
+            if (!uid) return;
+            userId = uid;
+        }
+        try {
+            await sb.from('usage_sessions').insert({
+                user_id: userId,
+                started_at: started,
+                duration_seconds: seconds
+            });
+        } catch (err) {
+            // Non-blocking — usage tracking must never break the app.
+        }
+    }
+
+    function onUsageVisibility() {
+        if (document.visibilityState === 'hidden') {
+            flushUsage(false);
+        } else {
+            usageChunkStarted = new Date().toISOString();
+        }
+    }
+
+    function onUsageUnload() {
+        flushUsage(true);
+    }
+
+    function startUsageTracking() {
+        if (usageTracking || !sb) return;
+        usageTracking = true;
+        usageSeconds = 0;
+        usageTickCount = 0;
+        usageChunkStarted = new Date().toISOString();
+        usageTimer = setInterval(function () {
+            usageTickCount++;
+            if (usageIsVisible()) usageSeconds += 1;
+            if (usageTickCount % 60 === 0) flushUsage(false);
+        }, 1000);
+        document.addEventListener('visibilitychange', onUsageVisibility);
+        window.addEventListener('pagehide', onUsageUnload);
+        window.addEventListener('beforeunload', onUsageUnload);
+    }
+
+    function stopUsageTracking() {
+        if (usageTimer) {
+            clearInterval(usageTimer);
+            usageTimer = null;
+        }
+        document.removeEventListener('visibilitychange', onUsageVisibility);
+        window.removeEventListener('pagehide', onUsageUnload);
+        window.removeEventListener('beforeunload', onUsageUnload);
+        usageTracking = false;
+    }
+
     /* ── App bootstrap ── */
 
     async function initApp() {
@@ -917,6 +1027,7 @@
                     redirectAfterLogin();
                 } else if (!isAdminPage) {
                     setAuthedUI(session);
+                    startUsageTracking();
                     loadAllFromDB();
                     revealApp();
                 }
@@ -939,6 +1050,7 @@
                 redirectAfterLogin();
             } else if (!isAdminPage) {
                 setAuthedUI(session);
+                startUsageTracking();
                 await loadAllFromDB();
                 revealApp();
             }
@@ -974,6 +1086,7 @@
         loadAchievementUnlocks: loadAchievementUnlocks,
         saveAchievementUnlock: saveAchievementUnlock,
         resetAchievements: resetAchievements,
-        getModules: getInMemoryModules
+        getModules: getInMemoryModules,
+        loadUsageSessions: loadUsageSessions
     };
 })();

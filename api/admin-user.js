@@ -41,11 +41,14 @@ export default async function handler(req, res) {
             const user = await userRes.json();
             const meta = user.user_metadata || user.raw_user_meta_data || {};
 
-            const [modules, chat, achievements] = await Promise.all([
+            const [modules, chat, achievements, usage] = await Promise.all([
                 fetchRows(`${base}/rest/v1/modules?select=id,name,year,part,semester,mark,grade&user_id=eq.${encodeURIComponent(id)}&order=year.asc,semester.asc,id.asc`, headers),
                 fetchRows(`${base}/rest/v1/chat_messages?select=id,role,content,created_at&user_id=eq.${encodeURIComponent(id)}&order=created_at.asc,id.asc`, headers),
-                fetchRows(`${base}/rest/v1/achievement_unlocks?select=unlock_key,unlocked_at&user_id=eq.${encodeURIComponent(id)}&order=unlocked_at.asc`, headers)
+                fetchRows(`${base}/rest/v1/achievement_unlocks?select=unlock_key,unlocked_at&user_id=eq.${encodeURIComponent(id)}&order=unlocked_at.asc`, headers),
+                fetchRows(`${base}/rest/v1/usage_sessions?select=started_at,duration_seconds&user_id=eq.${encodeURIComponent(id)}&order=started_at.asc`, headers)
             ]);
+
+            const timeSpentSeconds = (usage || []).reduce((s, u) => s + (Number(u.duration_seconds) || 0), 0);
 
             return res.status(200).json({
                 user: {
@@ -54,11 +57,13 @@ export default async function handler(req, res) {
                     display_name: meta.display_name || null,
                     created_at: user.created_at || user.createdAt || null,
                     last_sign_in_at: user.last_sign_in_at || user.lastSignInAt || null,
-                    phone: user.phone || null
+                    phone: user.phone || null,
+                    time_spent_seconds: timeSpentSeconds
                 },
                 modules,
                 chat,
-                achievements
+                achievements,
+                usage
             });
         }
 
@@ -108,7 +113,8 @@ export default async function handler(req, res) {
             await Promise.all([
                 deleteRows(`${base}/rest/v1/modules?user_id=eq.${encodeURIComponent(id)}`, headers),
                 deleteRows(`${base}/rest/v1/chat_messages?user_id=eq.${encodeURIComponent(id)}`, headers),
-                deleteRows(`${base}/rest/v1/achievement_unlocks?user_id=eq.${encodeURIComponent(id)}`, headers)
+                deleteRows(`${base}/rest/v1/achievement_unlocks?user_id=eq.${encodeURIComponent(id)}`, headers),
+                deleteRows(`${base}/rest/v1/usage_sessions?user_id=eq.${encodeURIComponent(id)}`, headers)
             ]);
 
             return res.status(200).json({ ok: true });

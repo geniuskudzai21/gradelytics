@@ -191,6 +191,11 @@ const server = http.createServer(async (req, res) => {
             const usersData = await fetchJson(`${base}/auth/v1/admin/users?per_page=1000`, headers);
             const users = usersData.users || (usersData.data && usersData.data.users) || [];
 
+            let usage = [];
+            try {
+                usage = await fetchJson(`${base}/rest/v1/usage_sessions?select=user_id,started_at,duration_seconds`, headers);
+            } catch (e) { /* usage_sessions table may not exist yet */ }
+
             const [modules, chat, unlocks] = await Promise.all([
                 fetchJson(`${base}/rest/v1/modules?select=user_id,name,year,part,semester,mark,grade,created_at`, headers),
                 fetchJson(`${base}/rest/v1/chat_messages?select=user_id,role,created_at`, headers),
@@ -200,6 +205,16 @@ const server = http.createServer(async (req, res) => {
             const modCount = countBy(modules, 'user_id');
             const chatCount = countBy(chat, 'user_id');
             const unlockCount = countBy(unlocks, 'user_id');
+
+            // Time on app: total and per-user active seconds.
+            const usageByUser = new Map();
+            let totalTimeSeconds = 0;
+            (usage || []).forEach(u => {
+                const s = Number(u.duration_seconds) || 0;
+                if (s <= 0) return;
+                totalTimeSeconds += s;
+                usageByUser.set(u.user_id, (usageByUser.get(u.user_id) || 0) + s);
+            });
 
             const rows = users.map(u => {
                 const m = modCount.get(u.id) || 0;
@@ -214,7 +229,8 @@ const server = http.createServer(async (req, res) => {
                     modules: m,
                     chat_messages: c,
                     achievements: a,
-                    active: m > 0 || c > 0 || a > 0
+                    time_spent_seconds: usageByUser.get(u.id) || 0,
+                    active: m > 0 || c > 0 || a > 0 || (usageByUser.get(u.id) || 0) > 0
                 };
             });
 
@@ -265,11 +281,12 @@ const server = http.createServer(async (req, res) => {
                     count: list.length
                 }));
 
-            // ── Time series (90 days) for signups, modules added and messages ──
+            // ── Time series (90 days) for signups, modules added, messages and usage ──
             const series = {
                 signups: dailySeries(rows, 'created_at', 90),
                 modules: dailySeries(modules, 'created_at', 90),
-                messages: dailySeries(chat, 'created_at', 90)
+                messages: dailySeries(chat, 'created_at', 90),
+                usage: dailyUsageSeries(usage || [], 90)
             };
 
             // ── Trend deltas (last 7d vs previous 7d, last 30d vs previous 30d) ──
@@ -278,6 +295,10 @@ const server = http.createServer(async (req, res) => {
                 const t = r.created_at ? new Date(r.created_at).getTime() : NaN;
                 return !isNaN(t) && t >= now - days * 86400000;
             }).length;
+            const usageSince = (list, days) => list.filter(r => {
+                const t = r.started_at ? new Date(r.started_at).getTime() : NaN;
+                return !isNaN(t) && t >= now - days * 86400000;
+            }).reduce((s, r) => s + (Number(r.duration_seconds) || 0), 0);
             const delta = (cur, prev) => prev > 0 ? Math.round(((cur - prev) / prev) * 100) : (cur > 0 ? 100 : 0);
 
             const users7d = countSince(rows, 7);
@@ -288,6 +309,8 @@ const server = http.createServer(async (req, res) => {
             const modulesPrev7d = countSince(modules, 14) - modules7d;
             const messages7d = countSince(chat, 7);
             const messagesPrev7d = countSince(chat, 14) - messages7d;
+            const usage7d = usageSince(usage || [], 7);
+            const usagePrev7d = usageSince(usage || [], 14) - usage7d;
 
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({
@@ -297,6 +320,8 @@ const server = http.createServer(async (req, res) => {
                 totalModules: modules.length,
                 totalChatMessages: chat.length,
                 totalAchievements: unlocks.length,
+                totalTimeSeconds,
+                avgSecondsPerActiveUser: activeCount ? Math.round(totalTimeSeconds / activeCount) : 0,
                 overallAverage,
                 mostCommonGrade,
                 gradeDistribution,
@@ -310,7 +335,8 @@ const server = http.createServer(async (req, res) => {
                     users7d, usersPrev7d, users7dDelta: delta(users7d, usersPrev7d),
                     users30d, usersPrev30d, users30dDelta: delta(users30d, usersPrev30d),
                     modules7d, modulesPrev7d, modules7dDelta: delta(modules7d, modulesPrev7d),
-                    messages7d, messagesPrev7d, messages7dDelta: delta(messages7d, messagesPrev7d)
+                    messages7d, messagesPrev7d, messages7dDelta: delta(messages7d, messagesPrev7d),
+                    usage7d, usagePrev7d, usage7dDelta: delta(usage7d, usagePrev7d)
                 },
                 generatedAt: new Date().toISOString(),
                 users: rows
@@ -367,11 +393,18 @@ const server = http.createServer(async (req, res) => {
                 const user = await userRes.json();
                 const meta = user.user_metadata || user.raw_user_meta_data || {};
 
+                let usage = [];
+                try {
+                    usage = await fetchJson(`${base}/rest/v1/usage_sessions?select=started_at,duration_seconds&user_id=eq.${encodeURIComponent(id)}&order=started_at.asc`, headers);
+                } catch (e) { /* usage_sessions table may not exist yet */ }
+
                 const [modules, chat, achievements] = await Promise.all([
                     fetchJson(`${base}/rest/v1/modules?select=id,name,year,part,semester,mark,grade&user_id=eq.${encodeURIComponent(id)}&order=year.asc,semester.asc,id.asc`, headers),
                     fetchJson(`${base}/rest/v1/chat_messages?select=id,role,content,created_at&user_id=eq.${encodeURIComponent(id)}&order=created_at.asc,id.asc`, headers),
                     fetchJson(`${base}/rest/v1/achievement_unlocks?select=unlock_key,unlocked_at&user_id=eq.${encodeURIComponent(id)}&order=unlocked_at.asc`, headers)
                 ]);
+
+                const timeSpentSeconds = (usage || []).reduce((s, u) => s + (Number(u.duration_seconds) || 0), 0);
 
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 return res.end(JSON.stringify({
@@ -381,11 +414,13 @@ const server = http.createServer(async (req, res) => {
                         display_name: meta.display_name || null,
                         created_at: user.created_at || user.createdAt || null,
                         last_sign_in_at: user.last_sign_in_at || user.lastSignInAt || null,
-                        phone: user.phone || null
+                        phone: user.phone || null,
+                        time_spent_seconds: timeSpentSeconds
                     },
                     modules,
                     chat,
-                    achievements
+                    achievements,
+                    usage
                 }));
             }
 
@@ -453,7 +488,8 @@ const server = http.createServer(async (req, res) => {
                 await Promise.all([
                     fetch(`${base}/rest/v1/modules?user_id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers }),
                     fetch(`${base}/rest/v1/chat_messages?user_id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers }),
-                    fetch(`${base}/rest/v1/achievement_unlocks?user_id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers })
+                    fetch(`${base}/rest/v1/achievement_unlocks?user_id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers }),
+                    fetch(`${base}/rest/v1/usage_sessions?user_id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers })
                 ]);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 return res.end(JSON.stringify({ ok: true }));
@@ -615,6 +651,25 @@ function dailySeries(list, dateField, days) {
         d.setDate(d.getDate() - i);
         const key = d.toISOString().slice(0, 10);
         out.push({ day: key, count: map.get(key) || 0 });
+    }
+    return out;
+}
+
+function dailyUsageSeries(list, days) {
+    const out = [];
+    const map = new Map();
+    list.forEach(r => {
+        const t = r.started_at ? new Date(r.started_at).getTime() : NaN;
+        if (isNaN(t)) return;
+        const key = new Date(t).toISOString().slice(0, 10);
+        map.set(key, (map.get(key) || 0) + (Number(r.duration_seconds) || 0));
+    });
+    const now = new Date();
+    for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        out.push({ day: key, seconds: map.get(key) || 0 });
     }
     return out;
 }
