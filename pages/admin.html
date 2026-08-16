@@ -36,16 +36,15 @@
             </nav>
 
             <div class="sidebar-footer">
-                <div class="sidebar-admin-chip">
-                    <i class='bx bx-shield-quarter'></i>
-                    <span>Administrator</span>
+                <div class="sidebar-footer-row">
+                    <div class="sidebar-admin-chip">
+                        <i class='bx bx-shield-quarter'></i>
+                        <span>Administrator</span>
+                    </div>
+                    <button class="btn btn-outline btn-sm" id="admin-lock" title="Sign out">
+                        <i class='bx bx-log-out'></i>
+                    </button>
                 </div>
-                <button class="theme-toggle-icon" id="admin-theme-toggle" title="Toggle light / dark theme">
-                    <i class='bx bx-sun'></i>
-                </button>
-                <button class="btn btn-outline btn-sm btn-block" id="admin-lock">
-                    <i class='bx bx-lock-alt'></i> Lock Console
-                </button>
             </div>
         </aside>
 
@@ -67,6 +66,7 @@
                         <span class="auto-refresh-label">Auto</span>
                     </label>
                     <button class="btn btn-outline" id="global-refresh"><i class='bx bx-refresh'></i> Refresh</button>
+                    <button class="btn-icon" id="admin-theme-toggle" title="Toggle light / dark theme"><i class='bx bx-sun'></i></button>
                 </div>
             </div>
 
@@ -115,6 +115,16 @@
                     </div>
                     <div class="chart-wrap chart-wrap--md">
                         <canvas id="chart-activity"></canvas>
+                    </div>
+                </div>
+
+                <div class="admin-panel">
+                    <div class="panel-head">
+                        <h2><i class='bx bx-calendar-check'></i> Today's Visitors</h2>
+                        <span id="daily-visitor-count" class="kpi-chip kpi-chip--neutral"></span>
+                    </div>
+                    <div id="daily-visitors-list" class="daily-visitors-list">
+                        <div class="empty-state">No visitors today</div>
                     </div>
                 </div>
 

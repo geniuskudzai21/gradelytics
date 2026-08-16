@@ -289,6 +289,29 @@ const server = http.createServer(async (req, res) => {
                 usage: dailyUsageSeries(usage || [], 90)
             };
 
+            // ── Daily visitors (today) ──
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            const todayMs = todayStart.getTime();
+            const visitorMap = new Map();
+            (usage || []).forEach(u => {
+                const t = u.started_at ? new Date(u.started_at).getTime() : NaN;
+                if (isNaN(t) || t < todayMs) return;
+                const existing = visitorMap.get(u.user_id);
+                if (!existing || t > existing.lastVisitMs) {
+                    visitorMap.set(u.user_id, { lastVisitMs: t, started_at: u.started_at });
+                }
+            });
+            const dailyVisitors = Array.from(visitorMap.entries()).map(([userId, info]) => {
+                const userRow = rows.find(r => r.id === userId);
+                return {
+                    user_id: userId,
+                    email: userRow ? userRow.email : '(unknown)',
+                    display_name: userRow ? userRow.display_name : null,
+                    last_visit: info.started_at
+                };
+            }).sort((a, b) => new Date(b.last_visit) - new Date(a.last_visit));
+
             // ── Trend deltas (last 7d vs previous 7d, last 30d vs previous 30d) ──
             const now = Date.now();
             const countSince = (list, days) => list.filter(r => {
@@ -329,6 +352,8 @@ const server = http.createServer(async (req, res) => {
                 achievementBreakdown,
                 averageMarkByYear,
                 avgMessagesPerActiveUser: activeCount ? +(chat.length / activeCount).toFixed(1) : 0,
+                dailyVisitors,
+                dailyVisitorCount: dailyVisitors.length,
                 signupsByDay: series.signups.slice(-30),
                 series,
                 trends: {

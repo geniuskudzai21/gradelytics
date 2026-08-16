@@ -245,6 +245,7 @@
             renderActivity();
             renderGrade();
             renderModules();
+            renderDailyVisitors();
             renderOverviewUsers((stats.users || []).slice()
                 .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
                 .slice(0, 8));
@@ -790,6 +791,33 @@
                 '<td>' + statusBadge(u) + '</td>';
             tbody.appendChild(tr);
         });
+    }
+
+    /* ── Daily visitors ── */
+
+    function renderDailyVisitors() {
+        const list = document.getElementById('daily-visitors-list');
+        const countEl = document.getElementById('daily-visitor-count');
+        if (!list || !stats) return;
+        const visitors = stats.dailyVisitors || [];
+        if (countEl) countEl.textContent = visitors.length + ' today';
+        if (!visitors.length) {
+            list.innerHTML = '<div class="empty-state">No visitors today</div>';
+            return;
+        }
+        list.innerHTML = visitors.map(function (v) {
+            const initials = (v.display_name || v.email || '?').substring(0, 2).toUpperCase();
+            const time = v.last_visit ? new Date(v.last_visit).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+            const name = v.display_name || v.email;
+            return '<div class="daily-visitor-row">' +
+                '<div class="daily-visitor-avatar">' + escapeHtml(initials) + '</div>' +
+                '<div class="daily-visitor-info">' +
+                    '<div class="daily-visitor-name">' + escapeHtml(name) + '</div>' +
+                    '<div class="daily-visitor-email">' + escapeHtml(v.email) + '</div>' +
+                '</div>' +
+                '<div class="daily-visitor-time">' + time + '</div>' +
+            '</div>';
+        }).join('');
     }
 
     /* ── Users list ── */

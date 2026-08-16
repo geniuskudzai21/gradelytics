@@ -167,6 +167,13 @@ button {
     border-top: 1px solid var(--border);
 }
 
+.sidebar-footer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-2);
+}
+
 .sidebar-admin-chip {
     display: flex;
     align-items: center;
@@ -365,27 +372,28 @@ button {
     height: 240px;
 }
 
-/* ── Theme toggle icon ── */
+/* ── Icon button (topbar) ── */
 
-.theme-toggle-icon {
-    width: 100%;
-    height: 32px;
-    display: flex;
+.btn-icon {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: var(--sp-2);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     background: var(--surface);
-    color: var(--muted);
-    font-size: 16px;
+    color: var(--text-light);
+    font-size: 18px;
     cursor: pointer;
-    transition: background var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast);
+    flex-shrink: 0;
+    transition: all var(--duration-base) var(--ease-out);
 }
 
-.theme-toggle-icon:hover {
+.btn-icon:hover {
     border-color: var(--primary);
-    color: var(--ink);
+    color: var(--primary);
+    background: var(--primary-muted);
 }
 
 /* ── Search ── */
@@ -771,6 +779,75 @@ button {
 
 .delete-warning strong {
     color: var(--ink);
+}
+
+/* ── Daily visitors list ── */
+
+.daily-visitors-list {
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.daily-visitor-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.daily-visitor-row:last-child {
+    border-bottom: none;
+}
+
+.daily-visitor-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--primary-muted);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.daily-visitor-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.daily-visitor-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.daily-visitor-email {
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.daily-visitor-time {
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: var(--sp-6);
+    color: var(--muted);
+    font-size: 13px;
 }
 
 /* ── Responsive ── */
