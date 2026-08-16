@@ -42,6 +42,10 @@
         background: var(--chrome-bg);
     }
 
+    .sidebar-menu {
+        margin-top: 55px;
+    }
+
     .sidebar.active {
         transform: translateX(0);
         box-shadow: var(--shadow-xl);
