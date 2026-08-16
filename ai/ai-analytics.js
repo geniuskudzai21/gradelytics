@@ -70,7 +70,7 @@ ASSESSMENT:`;
         ]);
         resultEl.innerHTML = renderPrediction(prediction, avg);
     } catch (error) {
-        resultEl.innerHTML = '<div class="pred-section" style="padding:16px;text-align:center;color:var(--danger)"><i class="bx bx-error-circle" style="font-size:24px"></i><p>Prediction failed: ' + error.message + '</p></div>';
+        resultEl.innerHTML = '<div class="pred-section" style="padding:16px;text-align:center;color:var(--danger)"><i class="bx bx-error-circle" style="font-size:24px"></i><p>Lots of users are accessing the app right now. Please try again in a moment.</p></div>';
     }
 }
 
@@ -265,7 +265,7 @@ FUTURE_STRATEGIES:
         ]);
         resultEl.innerHTML = formatWeakAreas(response, weakModules);
     } catch (error) {
-        resultEl.innerHTML = '<div class="pred-section" style="padding:16px;text-align:center;color:var(--danger)"><i class="bx bx-error-circle" style="font-size:24px"></i><p>Analysis failed: ' + error.message + '</p></div>';
+        resultEl.innerHTML = '<div class="pred-section" style="padding:16px;text-align:center;color:var(--danger)"><i class="bx bx-error-circle" style="font-size:24px"></i><p>Lots of users are accessing the app right now. Please try again in a moment.</p></div>';
     }
 }
 
@@ -356,7 +356,7 @@ CAREERS:
         ]);
         resultEl.innerHTML = formatCareers(response);
     } catch (error) {
-        resultEl.innerHTML = '<div class="pred-section" style="padding:16px;text-align:center;color:var(--danger)"><i class="bx bx-error-circle" style="font-size:24px"></i><p>Failed to get recommendations: ' + error.message + '</p></div>';
+        resultEl.innerHTML = '<div class="pred-section" style="padding:16px;text-align:center;color:var(--danger)"><i class="bx bx-error-circle" style="font-size:24px"></i><p>Lots of users are accessing the app right now. Please try again in a moment.</p></div>';
     }
 }
 
@@ -431,7 +431,7 @@ TIPS:
         ]);
         resultEl.innerHTML = formatTips(response);
     } catch (error) {
-        resultEl.innerHTML = '<div class="pred-section" style="padding:16px;text-align:center;color:var(--danger)"><i class="bx bx-error-circle" style="font-size:24px"></i><p>Failed to get study tips: ' + error.message + '</p></div>';
+        resultEl.innerHTML = '<div class="pred-section" style="padding:16px;text-align:center;color:var(--danger)"><i class="bx bx-error-circle" style="font-size:24px"></i><p>Lots of users are accessing the app right now. Please try again in a moment.</p></div>';
     }
 }
 

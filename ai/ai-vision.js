@@ -213,7 +213,7 @@ async function extractFromScreenshot() {
         displayModules();
         updateStatistics();
     } catch (error) {
-        showToast('Extraction failed: ' + error.message, 'error');
+        showToast('Lots of users are accessing the app right now. Please try again in a moment.', 'error');
         extractBtn.disabled = false;
         extractBtn.innerHTML = 'Extract Results';
     }

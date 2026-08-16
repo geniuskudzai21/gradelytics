@@ -19,13 +19,13 @@ function sendChatMessage() {
         callAI(apiMessages).then(reply => {
             hideChatTyping();
             addChatMessage('assistant', reply);
-        }).catch(error => {
+        }).catch(() => {
             hideChatTyping();
-            addChatMessage('assistant', 'Sorry, I encountered an error: ' + error.message);
+            addChatMessage('assistant', 'Lots of users are accessing the app right now. Please try again in a moment.');
         });
-    } catch (error) {
+    } catch {
         hideChatTyping();
-        addChatMessage('assistant', 'Sorry, I encountered an error: ' + error.message);
+        addChatMessage('assistant', 'Lots of users are accessing the app right now. Please try again in a moment.');
     }
 }
 

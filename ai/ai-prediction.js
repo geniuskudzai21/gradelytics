@@ -35,7 +35,7 @@ Do NOT invent module names. Be concise.`;
         ]);
         resultEl.innerHTML = renderPrediction(prediction, avg);
     } catch (error) {
-        resultEl.textContent = 'Prediction failed: ' + error.message;
+        resultEl.textContent = 'Lots of users are accessing the app right now. Please try again in a moment.';
     }
 }
 
