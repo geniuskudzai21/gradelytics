@@ -229,6 +229,10 @@
     }
 
     function refreshCurrent() {
+        if (currentView === 'user-detail' && currentUserId) {
+            openUserDetail(currentUserId);
+            return;
+        }
         const loader = loaders[currentView];
         if (loader) loader();
     }
