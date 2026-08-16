@@ -64,8 +64,6 @@
     }
 
     .sidebar-footer {
-        position: sticky;
-        bottom: 0;
         background: var(--chrome-bg);
     }
 
@@ -80,6 +78,10 @@
     .kpi-grid {
         grid-template-columns: 1fr;
         gap: var(--sp-3);
+    }
+
+    #add-module-btn {
+        margin-top: 20px;
     }
 
     .kpi-card {
