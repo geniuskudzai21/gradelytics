@@ -86,6 +86,7 @@ function clearChat() {
         }
         renderChatMessages();
         document.getElementById('confirm-modal').classList.remove('open');
+        showToast('Chat messages cleared.', 'success');
     };
     const onNo = () => {
         cleanup();

@@ -4,12 +4,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const inputSection = document.getElementById('input');
     const sidebar = document.querySelector('.sidebar');
     const menuToggle = document.getElementById('menu-toggle');
+    const backdrop = document.getElementById('sidebar-backdrop');
+
+    function closeSidebar() {
+        sidebar.classList.remove('active');
+    }
 
     function checkScreenSize() {
         if (window.innerWidth > 768) {
             sidebar.classList.add('active');
         } else {
-            sidebar.classList.remove('active');
+            closeSidebar();
         }
     }
 
@@ -17,6 +22,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     menuToggle.addEventListener('click', function () {
         sidebar.classList.toggle('active');
+    });
+
+    if (backdrop) {
+        backdrop.addEventListener('click', closeSidebar);
+    }
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeSidebar();
     });
 
     function setActiveNav(targetId) {
@@ -47,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function () {
             setActiveNav(targetId);
 
             if (window.innerWidth <= 768) {
-                sidebar.classList.remove('active');
+                closeSidebar();
             }
 
             setTimeout(observeRevealElements, 50);
@@ -363,6 +376,7 @@ function deleteAllModules() {
 }
 
 document.getElementById('confirm-yes').addEventListener('click', async function () {
+    if (pendingDeleteIndex === null) return;
     let cloudOk = true;
     try {
         if (pendingDeleteIndex === 'all') {

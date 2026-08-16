@@ -47,6 +47,18 @@
         box-shadow: var(--shadow-xl);
     }
 
+    .sidebar-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 999;
+    }
+
+    .sidebar.active ~ .sidebar-backdrop {
+        display: block;
+    }
+
     .sidebar-footer {
         position: sticky;
         bottom: 0;
