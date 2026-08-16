@@ -1735,6 +1735,30 @@ section.active {
     margin-bottom: 8px;
     background: var(--accent-muted, rgba(20, 201, 174, 0.08));
     border-left: 3px solid var(--teal);
+    transition: transform var(--duration-base) var(--ease-out);
+}
+
+.tip-item:hover {
+    transform: translateX(3px);
+}
+
+.tip-item--numbered {
+    gap: 10px;
+}
+
+.tip-item-num {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+    background: var(--teal);
+    color: #fff;
+    margin-top: 1px;
 }
 
 .tip-item-icon {
@@ -1776,6 +1800,11 @@ section.active {
 
 [data-theme="dark"] .tip-item {
     background: rgba(20, 201, 174, 0.08);
+}
+
+[data-theme="dark"] .tip-item-num {
+    background: var(--teal);
+    color: #fff;
 }
 
 [data-theme="dark"] .ai-chat-inline {

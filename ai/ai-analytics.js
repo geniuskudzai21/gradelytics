@@ -452,14 +452,32 @@ function formatTips(text) {
     }
 
     if (items.length === 0) {
+        for (const line of lines) {
+            const trimmed = line.trim();
+            const bulletMatch = trimmed.match(/^[-*]\s*\*?\*?(.+?)\*?\*?\s*[:\u2014\u2013-]\s*(.+)/);
+            const numMatch = trimmed.match(/^\d+[.)]\s*\*?\*?(.+?)\*?\*?\s*[:\u2014\u2013-]\s*(.+)/);
+            const m = bulletMatch || numMatch;
+            if (m) {
+                items.push({
+                    name: m[1].replace(/\*\*/g, '').trim(),
+                    detail: m[2].trim()
+                });
+            }
+        }
+    }
+
+    if (items.length === 0) {
         return formatMarkdown(text);
     }
 
+    const tipIcons = ['bx-target-lock', 'bx-book', 'bx-time-five', 'bx-check-circle', 'bx-brain', 'bx-line-chart'];
     let html = `<div class="pred-section"><div class="pred-section-title"><i class='bx bx-book-open'></i> Personalized Study Tips</div>`;
-    items.forEach(item => {
+    items.forEach(function (item, i) {
+        const icon = tipIcons[i % tipIcons.length];
         html += `
-            <div class="tip-item">
-                <div class="tip-item-icon"><i class="bx bx-bulb"></i></div>
+            <div class="tip-item tip-item--numbered">
+                <div class="tip-item-num">${i + 1}</div>
+                <div class="tip-item-icon"><i class="bx ${icon}"></i></div>
                 <div class="tip-item-content">
                     <h4>${item.name}</h4>
                     <p>${item.detail}</p>

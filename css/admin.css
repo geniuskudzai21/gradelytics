@@ -64,6 +64,36 @@ button {
     min-width: 0;
 }
 
+/* ── Sidebar toggle (hamburger) ── */
+
+.sidebar-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 20px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background var(--duration-base) var(--ease-out);
+}
+
+.sidebar-toggle:hover {
+    background: var(--surface-alt);
+}
+
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 9;
+}
+
 /* ── Sidebar ── */
 
 .sidebar-brand {
@@ -745,7 +775,33 @@ button {
 
 /* ── Responsive ── */
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
+    .sidebar-toggle {
+        display: flex;
+    }
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        z-index: 20;
+    }
+    .sidebar--open {
+        transform: translateX(0);
+    }
+    .sidebar--open + .sidebar-backdrop {
+        display: block;
+    }
+    .content {
+        margin-left: 0;
+    }
+    .chart-wrap {
+        height: 200px;
+    }
+    .chart-wrap--md {
+        height: 240px;
+    }
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
     .stat-grid {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -756,32 +812,9 @@ button {
 
 @media (max-width: 640px) {
     .sidebar {
-        position: static;
-        width: 100%;
-        height: auto;
-        border-right: none;
-        border-bottom: 1px solid var(--border);
-        padding: var(--sp-3);
-        gap: var(--sp-3);
-    }
-    .sidebar-brand {
-        padding: var(--sp-1) var(--sp-2) var(--sp-2);
-    }
-    .sidebar-nav {
-        flex-direction: row;
-        overflow-x: auto;
-        gap: var(--sp-2);
-    }
-    .sidebar-link {
-        flex: 1 0 auto;
-        justify-content: center;
-        white-space: nowrap;
-    }
-    .admin-shell {
-        flex-direction: column;
+        width: 260px;
     }
     .content {
-        margin-left: 0;
         padding: var(--sp-4);
     }
     .admin-panel {
@@ -803,6 +836,12 @@ button {
     }
     .detail-stats {
         grid-template-columns: 1fr;
+    }
+    .chart-wrap {
+        height: 180px;
+    }
+    .chart-wrap--md {
+        height: 220px;
     }
 }
 

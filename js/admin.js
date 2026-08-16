@@ -974,7 +974,39 @@
             link.addEventListener('click', function (e) {
                 e.preventDefault();
                 switchView(link.dataset.view);
+                closeSidebar();
             });
+        });
+
+        /* ── Sidebar toggle (hamburger) ── */
+        const sidebarEl = document.querySelector('.sidebar');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const backdrop = document.querySelector('.sidebar-backdrop');
+
+        function openSidebar() {
+            sidebarEl.classList.add('sidebar--open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSidebar() {
+            sidebarEl.classList.remove('sidebar--open');
+            document.body.style.overflow = '';
+        }
+
+        sidebarToggle.addEventListener('click', function () {
+            if (sidebarEl.classList.contains('sidebar--open')) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
+        });
+
+        backdrop.addEventListener('click', closeSidebar);
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && sidebarEl.classList.contains('sidebar--open')) {
+                closeSidebar();
+            }
         });
 
         document.querySelectorAll('[data-goto]').forEach(el => {
