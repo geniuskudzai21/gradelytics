@@ -72,14 +72,27 @@
     function gradeColor(g) {
         const key = String(g).trim();
         const map = {
-            '1': '#22A64C',
-            '2.1': '#14C9AE',
-            '2.2': '#1D6FE0',
-            '3': '#F0A83D',
+            '1':      '#22A64C',
+            '2.1':    '#1D6FE0',
+            '2.2':    '#F0A83D',
+            '3':      '#F97316',
             'Distinction': '#22A64C',
-            'Merit': '#14C9AE',
-            'Pass': '#1D6FE0',
-            'Fail': '#DC2626'
+            'Merit':  '#1D6FE0',
+            'Pass':   '#E5E7EB',
+            'P':      '#E5E7EB',
+            'Fail':   '#DC2626',
+            'F':      '#DC2626',
+            'A+':     '#22A64C',
+            'A':      '#34D399',
+            'A-':     '#14C9AE',
+            'B+':     '#1D6FE0',
+            'B':      '#7AB8E0',
+            'B-':     '#6366F1',
+            'C+':     '#B07AE0',
+            'C':      '#F0A83D',
+            'C-':     '#E07A9C',
+            'D':      '#F97316',
+            'F':      '#DC2626'
         };
         return map[key] || colorFor(key);
     }
