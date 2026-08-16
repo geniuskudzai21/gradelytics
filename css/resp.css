@@ -37,12 +37,20 @@
         transform: translateX(-100%);
         transition: transform var(--duration-slow) var(--ease-out);
         width: 260px;
+        height: 100dvh;
+        top: 0;
         background: var(--chrome-bg);
     }
 
     .sidebar.active {
         transform: translateX(0);
         box-shadow: var(--shadow-xl);
+    }
+
+    .sidebar-footer {
+        position: sticky;
+        bottom: 0;
+        background: var(--chrome-bg);
     }
 
     .menu-toggle {

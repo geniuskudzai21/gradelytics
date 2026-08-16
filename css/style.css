@@ -1271,6 +1271,27 @@ section.active {
    AI Analytics Hub
    ═══════════════════════════════════════════════════════ */
 
+.ai-disclaimer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    margin-top: var(--sp-5);
+    margin-bottom: var(--sp-5);
+    border-radius: var(--radius-md);
+    background: rgba(240, 168, 61, 0.10);
+    border: 1px solid rgba(240, 168, 61, 0.25);
+    font-size: 12px;
+    color: var(--text-light);
+    line-height: 1.4;
+}
+
+.ai-disclaimer i {
+    font-size: 16px;
+    color: #F0A83D;
+    flex-shrink: 0;
+}
+
 .ai-tabs {
     display: flex;
     gap: var(--sp-2);
