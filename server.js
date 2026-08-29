@@ -596,7 +596,22 @@ async function proxyToNvidia(payload, isVision) {
         body: JSON.stringify(body)
     });
     const text = await res.text();
-    return { status: res.status, text };
+    return { status: res.status, text: stripReasoning(text) };
+}
+
+function stripReasoning(text) {
+    try {
+        const data = JSON.parse(text);
+        const msg = data && data.choices && data.choices[0] && data.choices[0].message;
+        if (msg) {
+            delete msg.reasoning_content;
+            delete msg.reasoning;
+            delete msg.reasoning_text;
+        }
+        return JSON.stringify(data);
+    } catch (e) {
+        return text;
+    }
 }
 
 async function proxyToGemini(payload, { apiKey, model }) {

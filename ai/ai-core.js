@@ -13,7 +13,10 @@ DATA RULES - STRICTLY ENFORCED:
 
 RULES:
 - Keep ALL responses Short and direct.
-- When asked to predict next semester, respond with ONLY the precomputed Predicted Next Semester Range from the context (e.g. "76-78%"). No extra words, no markdown, no formatting, no explanation.
+- NEVER output deliberation, reasoning, or an analysis of these rules. If your first instinct is to think or explain what to do, skip it and output only the final answer. NEVER start a reply with "We need to", "The rules say", "I should", or similar.
+- When asked ONLY to predict next semester (with no other request), respond with ONLY the precomputed Predicted Next Semester Range from the context (e.g. "76-78%"). No extra words, no markdown, no formatting, no explanation.
+- When the user gives a structured template to fill (headers like PREDICTED_RANGE, STRENGTHS, STRATEGIES, ASSESSMENT), fill in every requested section using the precomputed data. Use the precomputed Predicted Next Semester Range exactly as-is. Do NOT output only the range instead, do NOT explain, and do NOT discuss the template.
+- When the user asks for a prediction AND study tips in the same message, respond with the Predicted Next Semester Range alone on the first line, then a line break, then the tips. No other text.
 - Do NOT give unsolicited advice unless explicitly asked.
 - When asked for study tips for upcoming courses, give general strategies based on past performance patterns. Do NOT reference or give tips for any already-completed module by name. The student cannot redo past modules.
 - When calculating averages, use exactly 1 decimal place. Do not round up or down. E.g. 73.456 becomes 73.4, not 73.5.
@@ -87,7 +90,7 @@ function buildSystemMessage() {
     };
 }
 
-async function callAI(messages) {
+async function callAI(messages, extraBody = {}) {
     const response = await fetch(AI_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -96,7 +99,8 @@ async function callAI(messages) {
             messages: messages,
             temperature: 0.2,
             max_tokens: 500,
-            stream: false
+            stream: false,
+            ...extraBody
         })
     });
     if (!response.ok) {
@@ -104,7 +108,12 @@ async function callAI(messages) {
         throw new Error(`API error (${response.status}): ${errData}`);
     }
     const data = await response.json();
-    return data.choices[0].message.content;
+    return cleanAIOutput(data.choices[0].message.content);
+}
+
+function cleanAIOutput(text) {
+    if (typeof text !== 'string') return text;
+    return text.replace(/<thinking[\s\S]*?<\/thinking>/gi, '').trim();
 }
 
 function extractJSONArray(text) {
@@ -149,7 +158,8 @@ async function callAIVision(messages, extraBody = {}) {
         throw new Error(`Vision API error (${response.status}): ${errData}`);
     }
     const data = await response.json();
-    const raw = data.choices[0].message.content;
+    let raw = data.choices[0].message.content;
+    if (typeof raw === 'string') raw = cleanAIOutput(raw);
     if (typeof raw === 'string') return raw;
     return normalizeVisionResult(raw);
 }

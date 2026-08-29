@@ -61,31 +61,13 @@ async function predictNextSemester() {
         return;
     }
     resultEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-light)"><div class="typing-indicator" style="display:inline-flex"><span></span><span></span><span></span></div><p style="margin-top:8px">Analyzing your academic performance...</p></div>';
-    showAnalysisLoader(resultEl, ['Analyzing grades', 'Sleuthing trends', 'Crunching averages', 'Contemplating', 'Predicting outcomes']);
 
     const avg = (modules.reduce((s, m) => s + m.mark, 0) / modules.length).toFixed(1);
     const predicted = computeNextPrediction(modules);
     const low = Math.max(0, Math.round(predicted - 1.5));
     const high = Math.min(100, Math.round(predicted + 1.5));
-    const predictedRange = `${low}-${high}`;
 
-    const prompt = `PREDICTED_RANGE: ${predictedRange}
-STRENGTHS:
-STRATEGIES:
-ASSESSMENT:`;
-
-    try {
-        const systemMsg = buildSystemMessage();
-        const prediction = await callAI([
-            systemMsg,
-            { role: 'user', content: prompt }
-        ]);
-        stopStatusLoader();
-        resultEl.innerHTML = renderPrediction(prediction, avg);
-    } catch (error) {
-        stopStatusLoader();
-        resultEl.innerHTML = '<div class="pred-section" style="padding:16px;text-align:center;color:var(--danger)"><i class="bx bx-error-circle" style="font-size:24px"></i><p>Lots of users are accessing the app right now. Please try again in a moment.</p></div>';
-    }
+    resultEl.innerHTML = renderPrediction(`${low}-${high}`, avg);
 }
 
 /* ─────────────────────────────────────────────
