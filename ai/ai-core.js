@@ -179,3 +179,38 @@ function dataURLtoContent(dataURL) {
         image_url: { url: dataURL }
     };
 }
+
+/* ── Claude-style "Sleuthing… Contemplating…" status loader ── */
+const CLAUDE_STATUS_WORDS = [
+    'Sleuthing', 'Contemplating', 'Deciphering', 'Analyzing',
+    'Crunching', 'Scanning', 'Reading', 'Reasoning',
+    'Extracting', 'Inspecting', 'Evaluating', 'Composing',
+    'Pondering', 'Checking', 'Studying', 'Interpreting'
+];
+
+let activeStatusLoader = null;
+
+function startStatusLoader(el, words) {
+    stopStatusLoader();
+    if (!el) return;
+    const list = (words && words.length) ? words : CLAUDE_STATUS_WORDS;
+    const state = { el, timer: null, idx: 0, dots: -1 };
+    activeStatusLoader = state;
+    el.dataset.statusLoader = 'on';
+    const tick = function () {
+        if (activeStatusLoader !== state) return;
+        state.dots = (state.dots + 1) % 4;
+        el.textContent = list[state.idx % list.length] + '.'.repeat(state.dots);
+        if (state.dots === 3) state.idx = (state.idx + 1) % list.length;
+    };
+    tick();
+    state.timer = setInterval(tick, 260);
+}
+
+function stopStatusLoader() {
+    const s = activeStatusLoader;
+    if (!s) return;
+    clearInterval(s.timer);
+    delete s.el.dataset.statusLoader;
+    activeStatusLoader = null;
+}

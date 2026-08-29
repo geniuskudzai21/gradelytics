@@ -28,8 +28,17 @@ export default async function handler(req, res) {
         }
 
         const nvidia = await proxyToNvidia(body, isVision);
-        res.writeHead(nvidia.status, { 'Content-Type': 'application/json' });
-        res.end(nvidia.text);
+        if (nvidia.status === 200 || isVision || !process.env.GEMINI_API_KEY || !process.env.GOOGLE_MODEL) {
+            res.writeHead(nvidia.status, { 'Content-Type': 'application/json' });
+            return res.end(nvidia.text);
+        }
+        console.error('[chat] NVIDIA chat failed, falling back to Gemini:', nvidia.status, nvidia.text);
+        const geminiReply = await proxyToGemini(body, {
+            apiKey: process.env.GEMINI_API_KEY,
+            model: process.env.GOOGLE_MODEL
+        });
+        res.writeHead(geminiReply.status, { 'Content-Type': 'application/json' });
+        return res.end(geminiReply.text);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

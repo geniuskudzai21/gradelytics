@@ -2867,6 +2867,25 @@ section.active {
     30% { opacity: 1; transform: scale(1); }
 }
 
+/* ── Chat Loading Bubble (Claude-style status word) ── */
+.chat-bubble-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.chat-bubble-loading .typing-indicator {
+    padding: 0;
+}
+
+.chat-status-word {
+    min-width: 90px;
+    font-size: 13px;
+    font-style: italic;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
 /* ═══════════════════════════════════════════════════════
    Menu Toggle
    ═══════════════════════════════════════════════════════ */

@@ -58,12 +58,17 @@ function showChatTyping() {
     const typingEl = document.createElement('div');
     typingEl.className = 'chat-message assistant typing';
     typingEl.id = 'chat-typing';
-    typingEl.innerHTML = '<div class="chat-bubble typing-indicator"><span></span><span></span><span></span></div>';
+    typingEl.innerHTML = '<div class="chat-bubble chat-bubble-loading"><div class="typing-indicator"><span></span><span></span><span></span></div><span class="chat-status-word"></span></div>';
     container.appendChild(typingEl);
     container.scrollTop = container.scrollHeight;
+    startStatusLoader(typingEl.querySelector('.chat-status-word'), [
+        'Sleuthing', 'Contemplating', 'Deciphering', 'Analyzing',
+        'Crunching', 'Scanning', 'Reading', 'Composing'
+    ]);
 }
 
 function hideChatTyping() {
+    stopStatusLoader();
     const typing = document.getElementById('chat-typing');
     if (typing) typing.remove();
 }

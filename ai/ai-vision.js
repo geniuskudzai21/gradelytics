@@ -64,7 +64,7 @@ function handleScreenshot(file) {
         if (preview) preview.style.display = 'block';
         if (extractBtn) extractBtn.disabled = false;
         if (dropzone) dropzone.style.display = 'none';
-        if (status) status.textContent = '';
+        if (status) { stopStatusLoader(); status.textContent = ''; }
     };
     reader.readAsDataURL(file);
 }
@@ -113,7 +113,7 @@ function removeScreenshot() {
     if (btn) { btn.disabled = true; btn.innerHTML = 'Extract Results'; }
     if (dropzone) dropzone.style.display = 'flex';
     if (input) input.value = '';
-    if (status) status.textContent = '';
+    if (status) { stopStatusLoader(); status.textContent = ''; }
 }
 
 async function extractFromScreenshot() {
@@ -124,6 +124,11 @@ async function extractFromScreenshot() {
     const extractBtn = document.getElementById('extract-btn');
     extractBtn.disabled = true;
     extractBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i> Extracting...';
+    const status = document.getElementById('extract-status');
+    startStatusLoader(status, [
+        'Sleuthing', 'Inspecting image', 'Scanning result table',
+        'Deciphering grades', 'Extracting modules', 'Crunching numbers'
+    ]);
 
     try {
         const reply = await callAIVision([
@@ -139,6 +144,8 @@ async function extractFromScreenshot() {
         const extracted = extractJSONArray(reply) || [];
 
         if (!Array.isArray(extracted) || extracted.length === 0) {
+            stopStatusLoader();
+            if (status) status.textContent = '';
             showToast('Could not extract any modules from the image. Try a clearer screenshot.', 'error');
             extractBtn.disabled = false;
             extractBtn.innerHTML = 'Extract Results';
@@ -219,6 +226,9 @@ async function extractFromScreenshot() {
         displayModules();
         updateStatistics();
     } catch (error) {
+        stopStatusLoader();
+        const status = document.getElementById('extract-status');
+        if (status) status.textContent = '';
         showToast('Lots of users are accessing the app right now. Please try again in a moment.', 'error');
         extractBtn.disabled = false;
         extractBtn.innerHTML = 'Extract Results';

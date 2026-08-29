@@ -57,9 +57,21 @@ const server = http.createServer(async (req, res) => {
                 }
             }
 
+            // Chat: try NVIDIA first, then fall back to Gemini on any failure
+            // so replies never break when the NVIDIA model is down or changing.
             const apiRes = await proxyToNvidia(parsed, isVision);
-            res.writeHead(apiRes.status, { 'Content-Type': 'application/json' });
-            res.end(apiRes.text);
+            if (apiRes.status === 200 || isVision || !process.env.GEMINI_API_KEY || !process.env.GOOGLE_MODEL) {
+                res.writeHead(apiRes.status, { 'Content-Type': 'application/json' });
+                res.end(apiRes.text);
+                return;
+            }
+            console.error('[server] NVIDIA chat failed, falling back to Gemini:', apiRes.status, apiRes.text);
+            const geminiReply = await proxyToGemini(parsed, {
+                apiKey: process.env.GEMINI_API_KEY,
+                model: process.env.GOOGLE_MODEL
+            });
+            res.writeHead(geminiReply.status, { 'Content-Type': 'application/json' });
+            res.end(geminiReply.text);
         } catch (err) {
             res.writeHead(500, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: err.message }));

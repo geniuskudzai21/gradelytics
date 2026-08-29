@@ -40,6 +40,14 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 /* ─────────────────────────────────────────────
+   Claude-style loading status
+   ───────────────────────────────────────────── */
+function showAnalysisLoader(resultEl, words) {
+    resultEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-light)"><div class="typing-indicator" style="display:inline-flex"><span></span><span></span><span></span></div><p class="ai-status-word" style="margin-top:8px"></p></div>';
+    startStatusLoader(resultEl.querySelector('.ai-status-word'), words);
+}
+
+/* ─────────────────────────────────────────────
    Predict Next Semester
    ───────────────────────────────────────────── */
 async function predictNextSemester() {
@@ -53,6 +61,7 @@ async function predictNextSemester() {
         return;
     }
     resultEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-light)"><div class="typing-indicator" style="display:inline-flex"><span></span><span></span><span></span></div><p style="margin-top:8px">Analyzing your academic performance...</p></div>';
+    showAnalysisLoader(resultEl, ['Analyzing grades', 'Sleuthing trends', 'Crunching averages', 'Contemplating', 'Predicting outcomes']);
 
     const avg = (modules.reduce((s, m) => s + m.mark, 0) / modules.length).toFixed(1);
     const predicted = computeNextPrediction(modules);
@@ -71,8 +80,10 @@ ASSESSMENT:`;
             systemMsg,
             { role: 'user', content: prompt }
         ]);
+        stopStatusLoader();
         resultEl.innerHTML = renderPrediction(prediction, avg);
     } catch (error) {
+        stopStatusLoader();
         resultEl.innerHTML = '<div class="pred-section" style="padding:16px;text-align:center;color:var(--danger)"><i class="bx bx-error-circle" style="font-size:24px"></i><p>Lots of users are accessing the app right now. Please try again in a moment.</p></div>';
     }
 }
@@ -244,6 +255,7 @@ async function detectWeakAreas() {
     }
 
     resultEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-light)"><div class="typing-indicator" style="display:inline-flex"><span></span><span></span><span></span></div><p style="margin-top:8px">Analyzing your weak areas...</p></div>';
+    showAnalysisLoader(resultEl, ['Scanning low scorers', 'Sleuthing weaknesses', 'Detecting patterns', 'Crunching marks', 'Analyzing']);
 
     const weakContext = weakModules.map((m, i) =>
         `${i + 1}. ${m.name} | P${m.part} Sem${m.semester} | ${m.mark}/100`
@@ -269,8 +281,10 @@ FUTURE_STRATEGIES:
             systemMsg,
             { role: 'user', content: prompt }
         ]);
+        stopStatusLoader();
         resultEl.innerHTML = formatWeakAreas(response, weakModules);
     } catch (error) {
+        stopStatusLoader();
         resultEl.innerHTML = '<div class="pred-section" style="padding:16px;text-align:center;color:var(--danger)"><i class="bx bx-error-circle" style="font-size:24px"></i><p>Lots of users are accessing the app right now. Please try again in a moment.</p></div>';
     }
 }
@@ -344,6 +358,7 @@ async function getCareerRecommendations() {
         return;
     }
     resultEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-light)"><div class="typing-indicator" style="display:inline-flex"><span></span><span></span><span></span></div><p style="margin-top:8px">Generating career recommendations...</p></div>';
+    showAnalysisLoader(resultEl, ['Evaluating strengths', 'Sleuthing career paths', 'Matching modules', 'Contemplating options', 'Analyzing']);
 
     const prompt = `Based on the student's completed module list, suggest 3-4 career paths that align with their strongest subjects and academic performance.
 
@@ -363,8 +378,10 @@ CAREERS:
             systemMsg,
             { role: 'user', content: prompt }
         ]);
+        stopStatusLoader();
         resultEl.innerHTML = formatCareers(response);
     } catch (error) {
+        stopStatusLoader();
         resultEl.innerHTML = '<div class="pred-section" style="padding:16px;text-align:center;color:var(--danger)"><i class="bx bx-error-circle" style="font-size:24px"></i><p>Lots of users are accessing the app right now. Please try again in a moment.</p></div>';
     }
 }
@@ -421,6 +438,7 @@ async function getStudyTips() {
         return;
     }
     resultEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-light)"><div class="typing-indicator" style="display:inline-flex"><span></span><span></span><span></span></div><p style="margin-top:8px">Generating personalized study tips...</p></div>';
+    showAnalysisLoader(resultEl, ['Reviewing performance', 'Sleuthing study spots', 'Tailoring strategies', 'Composing tips', 'Analyzing']);
 
     const prompt = `Based on the student's completed module list, provide 4 specific, actionable study tips tailored to their academic performance pattern.
 
@@ -441,8 +459,10 @@ TIPS:
             systemMsg,
             { role: 'user', content: prompt }
         ]);
+        stopStatusLoader();
         resultEl.innerHTML = formatTips(response);
     } catch (error) {
+        stopStatusLoader();
         resultEl.innerHTML = '<div class="pred-section" style="padding:16px;text-align:center;color:var(--danger)"><i class="bx bx-error-circle" style="font-size:24px"></i><p>Lots of users are accessing the app right now. Please try again in a moment.</p></div>';
     }
 }
