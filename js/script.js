@@ -123,7 +123,7 @@ function updateWelcomeBanner() {
 
     const greetingEl = document.getElementById('welcome-greeting');
     const db = window.GradelyticsDB;
-    const displayName = (db && typeof db.getDisplayName === 'function') ? db.getDisplayName() : 'Genius';
+    const displayName = (db && typeof db.getDisplayName === 'function') ? db.getDisplayName() : 'Guest';
     if (greetingEl) greetingEl.textContent = `${greeting}, ${displayName}`;
 
     const mods = modules;

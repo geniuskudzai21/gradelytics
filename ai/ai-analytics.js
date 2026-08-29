@@ -43,6 +43,9 @@ document.addEventListener('DOMContentLoaded', function () {
    Predict Next Semester
    ───────────────────────────────────────────── */
 async function predictNextSemester() {
+    if (typeof GradelyticsDB !== 'undefined' && !GradelyticsDB.requireAuth('Sign in to unlock AI-powered predictions.')) {
+        return;
+    }
     const modules = (typeof GradelyticsDB !== 'undefined') ? GradelyticsDB.getModules() : [];
     const resultEl = document.getElementById('predict-result');
     if (modules.length === 0) {
@@ -220,6 +223,9 @@ function simulateWhatIf() {
    Weak Area Detection
    ───────────────────────────────────────────── */
 async function detectWeakAreas() {
+    if (typeof GradelyticsDB !== 'undefined' && !GradelyticsDB.requireAuth('Sign in to unlock AI weak-area detection.')) {
+        return;
+    }
     const modules = (typeof GradelyticsDB !== 'undefined') ? GradelyticsDB.getModules() : [];
     const resultEl = document.getElementById('weakness-result');
     if (modules.length === 0) {
@@ -328,6 +334,9 @@ function formatWeakAreas(text, weakModules) {
    Career Recommendations
    ───────────────────────────────────────────── */
 async function getCareerRecommendations() {
+    if (typeof GradelyticsDB !== 'undefined' && !GradelyticsDB.requireAuth('Sign in to unlock AI career recommendations.')) {
+        return;
+    }
     const modules = (typeof GradelyticsDB !== 'undefined') ? GradelyticsDB.getModules() : [];
     const resultEl = document.getElementById('career-result');
     if (modules.length === 0) {
@@ -402,6 +411,9 @@ function formatCareers(text) {
    Study Tips
    ───────────────────────────────────────────── */
 async function getStudyTips() {
+    if (typeof GradelyticsDB !== 'undefined' && !GradelyticsDB.requireAuth('Sign in to unlock AI study tips.')) {
+        return;
+    }
     const modules = (typeof GradelyticsDB !== 'undefined') ? GradelyticsDB.getModules() : [];
     const resultEl = document.getElementById('tips-result');
     if (modules.length === 0) {

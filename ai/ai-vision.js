@@ -34,6 +34,9 @@ Part and Semester hierarchy:
 If you cannot find any modules, return an empty array [].`;
 
 function handleScreenshot(file) {
+    if (typeof GradelyticsDB !== 'undefined' && !GradelyticsDB.requireAuth('Sign in to upload a screenshot for AI extraction.')) {
+        return;
+    }
     const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
     if (!validTypes.includes(file.type)) {
         showToast('Please upload a PNG, JPEG, or WebP image.', 'error');
@@ -115,6 +118,9 @@ function removeScreenshot() {
 
 async function extractFromScreenshot() {
     if (!screenshotBase64) return;
+    if (typeof GradelyticsDB !== 'undefined' && !GradelyticsDB.requireAuth('Sign in to let AI extract your results from a screenshot.')) {
+        return;
+    }
     const extractBtn = document.getElementById('extract-btn');
     extractBtn.disabled = true;
     extractBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i> Extracting...';
@@ -220,6 +226,15 @@ async function extractFromScreenshot() {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+    const dropzone = document.querySelector('.screenshot-dropzone');
+    if (dropzone) {
+        dropzone.addEventListener('click', function (e) {
+            if (typeof GradelyticsDB !== 'undefined' && !GradelyticsDB.requireAuth('Sign in to upload a screenshot for AI extraction.')) {
+                e.preventDefault();
+            }
+        });
+    }
+
     const screenshotInput = document.getElementById('screenshot-input');
     if (screenshotInput) {
         screenshotInput.addEventListener('change', function (e) {

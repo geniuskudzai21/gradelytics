@@ -8,6 +8,9 @@
        isConfigured()               true when real Supabase credentials exist
        getSession()                 current Supabase auth session
        getUserId()                  current user id (or null)
+       isSignedIn()                 true when a user is currently signed in
+       requireAuth(message)         gate for AI actions; shows a sign-in modal
+                                     and returns false when the user is a guest
        signUp(email, password)      create a new account
        signIn(email, password)      sign in with email + password
        signOut()                    sign out
@@ -40,9 +43,11 @@
        cloud delete can never resurrect those rows on a later refresh. */
     const LS_MODULES_TOMBSTONE = 'modules_cleared';
 
+    const GUEST_DISPLAY_NAME = 'Guest';
+
     let sb = null;
     let configured = false;
-    let currentDisplayName = 'Genius';
+    let currentDisplayName = GUEST_DISPLAY_NAME;
     let currentUserId = null;
     let adminPromptActive = false;
     let authRedirectHandled = false;
@@ -455,7 +460,7 @@
         const settingsName = document.getElementById('settings-display-name');
         if (settingsName) settingsName.value = currentDisplayName;
         const greeting = document.getElementById('welcome-greeting');
-        if (greeting && currentDisplayName !== 'Genius') {
+        if (greeting) {
             greeting.textContent = greeting.textContent.replace(/,\s*[^,]*$/, '') + `, ${currentDisplayName}`;
         }
     }
@@ -473,6 +478,19 @@
         renderDisplayName();
         const settingsEmail = document.getElementById('settings-email');
         if (settingsEmail) settingsEmail.value = email;
+        const logoutBtn = document.getElementById('logout-btn');
+        const signinBtn = document.getElementById('sidebar-signin-btn');
+        if (logoutBtn) logoutBtn.style.display = '';
+        if (signinBtn) signinBtn.style.display = 'none';
+    }
+
+    /* Guests keep full read/write access to the dashboard (local-only data);
+       the sidebar just swaps the logout icon for a sign-in link. */
+    function setGuestUI() {
+        const logoutBtn = document.getElementById('logout-btn');
+        const signinBtn = document.getElementById('sidebar-signin-btn');
+        if (logoutBtn) logoutBtn.style.display = 'none';
+        if (signinBtn) signinBtn.style.display = '';
     }
 
     function getDisplayName() {
@@ -559,11 +577,54 @@
     }
 
     /* ── Reveal the app once auth state is known. The dashboard hides itself
-       with `html.auth-gate body { visibility: hidden; }` until this runs so an
-       unauthenticated visitor never sees a flash of the dashboard before being
-       redirected to the auth page. ── */
+       with `html.auth-gate body { visibility: hidden; }` until this runs so
+       there is no flash of unstyled/unauthenticated state while the initial
+       session check resolves. Guests are never redirected away — they can
+       browse the whole dashboard; only AI actions require sign-in. ── */
     function revealApp() {
         document.documentElement.classList.remove('auth-gate');
+    }
+
+    /* ── Sign-in gate for AI features (screenshot extraction, predictions,
+       weak-area detection, career recommendations, study tips, AI chat).
+       Everything else in the dashboard (manual input, stats, achievements)
+       works for guests. Returns true when the action is allowed to proceed;
+       otherwise shows a "sign in required" modal and returns false. ── */
+    function isSignedIn() {
+        return !!currentUserId;
+    }
+
+    function requireAuth(message) {
+        if (!isConfigured() || !sb) return true;
+        if (isSignedIn()) return true;
+        openAuthRequiredModal(message);
+        return false;
+    }
+
+    function openAuthRequiredModal(message) {
+        const modal = document.getElementById('auth-required-modal');
+        if (!modal) {
+            window.location.href = 'auth.html';
+            return;
+        }
+        const msgEl = document.getElementById('auth-required-message');
+        if (msgEl) {
+            msgEl.textContent = message || 'Sign in to use Gradelytics AI features.';
+        }
+        modal.classList.add('open');
+    }
+
+    function wireAuthRequiredModal() {
+        const modal = document.getElementById('auth-required-modal');
+        if (!modal) return;
+        const closeBtn = document.getElementById('auth-required-close');
+        const cancelBtn = document.getElementById('auth-required-cancel');
+        function close() { modal.classList.remove('open'); }
+        if (closeBtn) closeBtn.addEventListener('click', close);
+        if (cancelBtn) cancelBtn.addEventListener('click', close);
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) close();
+        });
     }
 
     /* ── Auth page UI (pages/auth.html) ── */
@@ -730,13 +791,11 @@
         const logoutBtn = document.getElementById('logout-btn');
         if (!logoutBtn) return;
         logoutBtn.addEventListener('click', async function () {
-            if (!sb) {
-                window.location.href = '../index.html';
-                return;
-            }
+            if (!sb) return;
             await signOut();
-            fallbackToLocal();
-            window.location.href = 'auth.html';
+            // onAuthStateChange's SIGNED_OUT handler falls back to local data
+            // and keeps the user on the dashboard as a guest.
+            if (typeof showToast === 'function') showToast('Signed out.', 'success');
         });
     }
 
@@ -841,13 +900,11 @@
 
         if (signoutBtn) {
             signoutBtn.addEventListener('click', async function () {
-                if (!sb) {
-                    window.location.href = '../index.html';
-                    return;
-                }
+                if (!sb) return;
                 await signOut();
-                fallbackToLocal();
-                window.location.href = 'auth.html';
+                // onAuthStateChange's SIGNED_OUT handler falls back to local data
+                // and keeps the user on the dashboard as a guest.
+                if (typeof showToast === 'function') showToast('Signed out.', 'success');
             });
         }
 
@@ -1011,11 +1068,14 @@
         } else if (!isAdminPage) {
             wireLogout();
             wireSettings();
+            wireAuthRequiredModal();
         }
 
         if (!hasConfig) {
             if (!isAuthPage && !isAdminPage) {
                 fallbackToLocal();
+                renderDisplayName();
+                setGuestUI();
                 revealApp();
             }
             return;
@@ -1032,14 +1092,18 @@
                     revealApp();
                 }
             } else if (event === 'SIGNED_OUT') {
-                currentDisplayName = 'Genius';
+                currentDisplayName = GUEST_DISPLAY_NAME;
                 clearUserCache();
                 currentUserId = null;
                 setInMemoryModules([]);
                 setInMemoryChat([]);
                 if (!isAuthPage && !isAdminPage) {
+                    // Guests can keep browsing the dashboard after signing out —
+                    // only AI features send them back to auth.html.
                     fallbackToLocal();
-                    window.location.href = 'auth.html';
+                    renderDisplayName();
+                    setGuestUI();
+                    revealApp();
                 }
             }
         });
@@ -1055,7 +1119,12 @@
                 revealApp();
             }
         } else if (!isAuthPage && !isAdminPage) {
-            window.location.href = 'auth.html';
+            // No session: let guests view the dashboard with local-only data.
+            // Sign-in is only enforced when they try to use an AI feature.
+            fallbackToLocal();
+            renderDisplayName();
+            setGuestUI();
+            revealApp();
         }
     }
 
@@ -1070,6 +1139,8 @@
         getUserId: getUserId,
         getDisplayName: getDisplayName,
         getCacheKey: cacheKey,
+        isSignedIn: isSignedIn,
+        requireAuth: requireAuth,
         signUp: signUp,
         signIn: signIn,
         signInWithGoogle: signInWithGoogle,

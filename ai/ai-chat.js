@@ -5,6 +5,9 @@ function chatStorageKey() {
 }
 
 function sendChatMessage() {
+    if (typeof GradelyticsDB !== 'undefined' && !GradelyticsDB.requireAuth('Sign in to chat with Gradelytics AI.')) {
+        return;
+    }
     const input = document.getElementById('chat-input');
     const message = input.value.trim();
     if (!message) return;
