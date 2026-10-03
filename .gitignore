@@ -3,3 +3,4 @@ supabase
 server.log
 README.md
 schema.sql
+.vercel
