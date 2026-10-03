@@ -229,7 +229,7 @@ async function extractFromScreenshot() {
         stopStatusLoader();
         const status = document.getElementById('extract-status');
         if (status) status.textContent = '';
-        showToast('Lots of users are accessing the app right now. Please try again in a moment.', 'error');
+        showToast(aiFailureMessage(error), 'error');
         extractBtn.disabled = false;
         extractBtn.innerHTML = 'Extract Results';
     }

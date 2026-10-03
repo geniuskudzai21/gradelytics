@@ -14,6 +14,29 @@ if (fs.existsSync(envPath)) {
 
 const PORT = process.env.PORT || 3000;
 
+// A user counts as active while they are actually using the app. The client
+// flushes a usage chunk roughly every 60s, so the window has to be wider than
+// the flush cadence — otherwise nobody would ever look active between flushes.
+const ACTIVE_WINDOW_MS = 90 * 1000;
+
+// Free model tiers have a rate limit rather than a bill, so the goal is to
+// stop one account from consuming the whole provider quota. Vision is roughly
+// an order of magnitude more expensive per call than a short chat turn, so it
+// gets the tighter cap. Every number is env-tunable — set the DAILY limits to
+// 6 if you want a hard 6-a-day cap.
+const AI_LIMITS = {
+    chat: {
+        day: intEnv('AI_CHAT_DAILY_LIMIT', 20),
+        minute: intEnv('AI_CHAT_MINUTE_LIMIT', 6)
+    },
+    vision: {
+        day: intEnv('AI_VISION_DAILY_LIMIT', 8),
+        minute: intEnv('AI_VISION_MINUTE_LIMIT', 3)
+    }
+};
+
+const burstHits = new Map();
+
 const MIME = {
     '.html': 'text/html',
     '.css': 'text/css',
@@ -36,6 +59,13 @@ const server = http.createServer(async (req, res) => {
             const parsed = JSON.parse(body);
             const isVision = parsed.requestType === 'vision';
             delete parsed.requestType;
+
+            const gate = await enforceQuota(req, isVision);
+            if (gate) {
+                res.writeHead(gate.status, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(gate.body));
+                return;
+            }
 
             // Prefer Gemini for vision. If it fails (rate limit, outage, etc.)
             // fall back to the NVIDIA vision model (VISION_MODEL) so extraction
@@ -228,11 +258,25 @@ const server = http.createServer(async (req, res) => {
                 usageByUser.set(u.user_id, (usageByUser.get(u.user_id) || 0) + s);
             });
 
+            // Presence: when each user was last seen using the app. A usage chunk
+            // covers [started_at, started_at + duration], so the end of a user's
+            // latest chunk is their last moment with the dashboard visible.
+            const lastSeenByUser = new Map();
+            (usage || []).forEach(u => {
+                const started = u.started_at ? new Date(u.started_at).getTime() : NaN;
+                if (isNaN(started)) return;
+                const end = started + (Number(u.duration_seconds) || 0) * 1000;
+                if (end > (lastSeenByUser.get(u.user_id) || 0)) lastSeenByUser.set(u.user_id, end);
+            });
+            const cutoff = Date.now() - ACTIVE_WINDOW_MS;
+
             const rows = users.map(u => {
                 const m = modCount.get(u.id) || 0;
                 const c = chatCount.get(u.id) || 0;
                 const a = unlockCount.get(u.id) || 0;
                 const meta = u.user_metadata || u.raw_user_meta_data || {};
+                const lastSeen = lastSeenByUser.get(u.id) || 0;
+                const engaged = m > 0 || c > 0 || a > 0 || (usageByUser.get(u.id) || 0) > 0;
                 return {
                     id: u.id,
                     email: u.email || '(no email)',
@@ -242,11 +286,14 @@ const server = http.createServer(async (req, res) => {
                     chat_messages: c,
                     achievements: a,
                     time_spent_seconds: usageByUser.get(u.id) || 0,
-                    active: m > 0 || c > 0 || a > 0 || (usageByUser.get(u.id) || 0) > 0
+                    last_seen_at: lastSeen ? new Date(lastSeen).toISOString() : null,
+                    active: lastSeen >= cutoff,
+                    engaged: engaged
                 };
             });
 
             const activeCount = rows.filter(r => r.active).length;
+            const engagedCount = rows.filter(r => r.engaged).length;
 
             // ── Performance & engagement ──
             const marks = modules.filter(m => m.mark != null && Number(m.mark) >= 0).map(m => Number(m.mark));
@@ -352,18 +399,20 @@ const server = http.createServer(async (req, res) => {
                 totalUsers: rows.length,
                 activeUsers: activeCount,
                 activeUserPct: rows.length ? Math.round((activeCount / rows.length) * 100) : 0,
+                engagedUsers: engagedCount,
+                engagedUserPct: rows.length ? Math.round((engagedCount / rows.length) * 100) : 0,
                 totalModules: modules.length,
                 totalChatMessages: chat.length,
                 totalAchievements: unlocks.length,
                 totalTimeSeconds,
-                avgSecondsPerActiveUser: activeCount ? Math.round(totalTimeSeconds / activeCount) : 0,
+                avgSecondsPerActiveUser: engagedCount ? Math.round(totalTimeSeconds / engagedCount) : 0,
                 overallAverage,
                 mostCommonGrade,
                 gradeDistribution,
                 topModules,
                 achievementBreakdown,
                 averageMarkByYear,
-                avgMessagesPerActiveUser: activeCount ? +(chat.length / activeCount).toFixed(1) : 0,
+                avgMessagesPerActiveUser: engagedCount ? +(chat.length / engagedCount).toFixed(1) : 0,
                 dailyVisitors,
                 dailyVisitorCount: dailyVisitors.length,
                 signupsByDay: series.signups.slice(-30),
@@ -679,6 +728,123 @@ function countBy(list, key) {
         map.set(k, (map.get(k) || 0) + 1);
     });
     return map;
+}
+
+/* ── Per-user AI quota ── */
+
+function intEnv(name, fallback) {
+    const n = parseInt(process.env[name], 10);
+    return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+async function enforceQuota(req, isVision) {
+    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const anonKey = process.env.SUPABASE_ANON_KEY;
+    const kind = isVision ? 'vision' : 'chat';
+    const limits = AI_LIMITS[kind];
+
+    // No Supabase config means there is nothing to count against. Never block
+    // the app because quota bookkeeping is unavailable.
+    if (!serviceRole || !supabaseUrl || !anonKey) return null;
+
+    const userId = await resolveUserId(supabaseUrl, anonKey, req.headers.authorization);
+    if (!userId) {
+        return {
+            status: 401,
+            body: {
+                error: 'ai_unauthenticated',
+                message: 'Sign in again to use AI features — your session may have expired.'
+            }
+        };
+    }
+
+    if (burstExceeded(userId, kind, limits.minute)) {
+        return {
+            status: 429,
+            body: {
+                error: 'ai_quota_exceeded',
+                kind: kind,
+                scope: 'minute',
+                limit: limits.minute,
+                message: `Easy there — you can send ${limits.minute} AI ${plural(kind)} a minute. Try again in a moment.`
+            }
+        };
+    }
+
+    const used = await bumpDailyUsage(supabaseUrl, serviceRole, userId, kind);
+    if (used != null && used > limits.day) {
+        return {
+            status: 429,
+            body: {
+                error: 'ai_quota_exceeded',
+                kind: kind,
+                scope: 'day',
+                used: used - 1,
+                limit: limits.day,
+                message: `You've used all ${limits.day} of today's AI ${plural(kind)}. Your allowance resets tomorrow.`
+            }
+        };
+    }
+
+    return null;
+}
+
+function plural(kind) {
+    return kind === 'vision' ? 'image extractions' : 'messages';
+}
+
+async function resolveUserId(base, anonKey, authHeader) {
+    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    if (!token) return null;
+    try {
+        const res = await fetch(`${base}/auth/v1/user`, {
+            headers: { apikey: anonKey, Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data && data.id ? data.id : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function burstExceeded(userId, kind, max) {
+    const key = `${userId}:${kind}`;
+    const now = Date.now();
+    const window = 60000;
+    const hits = (burstHits.get(key) || []).filter(t => now - t < window);
+    if (hits.length >= max) {
+        burstHits.set(key, hits);
+        return true;
+    }
+    hits.push(now);
+    burstHits.set(key, hits);
+    if (burstHits.size > 5000) burstHits.clear();
+    return false;
+}
+
+// Returns the new count for this kind, or null when the counter is unavailable
+// so a missing migration degrades to "no limit" instead of a broken app.
+async function bumpDailyUsage(base, serviceRole, userId, kind) {
+    try {
+        const res = await fetch(`${base}/rest/v1/rpc/bump_ai_usage`, {
+            method: 'POST',
+            headers: {
+                apikey: serviceRole,
+                Authorization: `Bearer ${serviceRole}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ p_user_id: userId, p_kind: kind })
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const row = Array.isArray(data) ? data[0] : data;
+        if (!row) return null;
+        return Number(kind === 'vision' ? row.vision_count : row.chat_count) || 0;
+    } catch (e) {
+        return null;
+    }
 }
 
 function safeEqual(a, b) {

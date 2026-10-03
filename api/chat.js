@@ -1,3 +1,23 @@
+// Free model tiers have a rate limit rather than a bill, so the goal is to
+// stop one account from consuming the whole provider quota. Vision is roughly
+// an order of magnitude more expensive per call than a short chat turn, so it
+// gets the tighter cap. Every number is env-tunable — set the DAILY limits to
+// 6 if you want a hard 6-a-day cap.
+const AI_LIMITS = {
+    chat: {
+        day: intEnv('AI_CHAT_DAILY_LIMIT', 20),
+        minute: intEnv('AI_CHAT_MINUTE_LIMIT', 6)
+    },
+    vision: {
+        day: intEnv('AI_VISION_DAILY_LIMIT', 8),
+        minute: intEnv('AI_VISION_MINUTE_LIMIT', 3)
+    }
+};
+
+// Burst guard. Best-effort only: on serverless this resets on cold start, which
+// is fine because the daily counter in Postgres is the real limit.
+const burstHits = new Map();
+
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -7,6 +27,12 @@ export default async function handler(req, res) {
         const body = { ...req.body };
         const isVision = body.requestType === 'vision';
         delete body.requestType;
+
+        const gate = await enforceQuota(req, isVision);
+        if (gate) {
+            res.writeHead(gate.status, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify(gate.body));
+        }
 
         // Prefer Gemini for vision. If it fails (rate limit, outage, etc.)
         // fall back to the NVIDIA vision model (VISION_MODEL) so extraction
@@ -143,4 +169,121 @@ async function proxyToGemini(payload, { apiKey, model }) {
         : [];
     const content = parts.map(p => p.text || '').join('');
     return { status: 200, text: JSON.stringify({ choices: [{ message: { content } }] }) };
+}
+
+/* ── Per-user AI quota ── */
+
+function intEnv(name, fallback) {
+    const n = parseInt(process.env[name], 10);
+    return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+async function enforceQuota(req, isVision) {
+    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const anonKey = process.env.SUPABASE_ANON_KEY;
+    const kind = isVision ? 'vision' : 'chat';
+    const limits = AI_LIMITS[kind];
+
+    // No Supabase config means there is nothing to count against. Never block
+    // the app because quota bookkeeping is unavailable.
+    if (!serviceRole || !supabaseUrl || !anonKey) return null;
+
+    const userId = await resolveUserId(supabaseUrl, anonKey, req.headers.authorization);
+    if (!userId) {
+        return {
+            status: 401,
+            body: {
+                error: 'ai_unauthenticated',
+                message: 'Sign in again to use AI features — your session may have expired.'
+            }
+        };
+    }
+
+    if (burstExceeded(userId, kind, limits.minute)) {
+        return {
+            status: 429,
+            body: {
+                error: 'ai_quota_exceeded',
+                kind: kind,
+                scope: 'minute',
+                limit: limits.minute,
+                message: `Easy there — you can send ${limits.minute} AI ${plural(kind)} a minute. Try again in a moment.`
+            }
+        };
+    }
+
+    const used = await bumpDailyUsage(supabaseUrl, serviceRole, userId, kind);
+    if (used != null && used > limits.day) {
+        return {
+            status: 429,
+            body: {
+                error: 'ai_quota_exceeded',
+                kind: kind,
+                scope: 'day',
+                used: used - 1,
+                limit: limits.day,
+                message: `You've used all ${limits.day} of today's AI ${plural(kind)}. Your allowance resets tomorrow.`
+            }
+        };
+    }
+
+    return null;
+}
+
+function plural(kind) {
+    return kind === 'vision' ? 'image extractions' : 'messages';
+}
+
+async function resolveUserId(base, anonKey, authHeader) {
+    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    if (!token) return null;
+    try {
+        const res = await fetch(`${base}/auth/v1/user`, {
+            headers: { apikey: anonKey, Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data && data.id ? data.id : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function burstExceeded(userId, kind, max) {
+    const key = `${userId}:${kind}`;
+    const now = Date.now();
+    const window = 60000;
+    const hits = (burstHits.get(key) || []).filter(t => now - t < window);
+    if (hits.length >= max) {
+        burstHits.set(key, hits);
+        return true;
+    }
+    hits.push(now);
+    burstHits.set(key, hits);
+    if (burstHits.size > 5000) burstHits.clear();
+    return false;
+}
+
+// Returns the new count for this kind, or null when the counter is unavailable
+// so a missing migration degrades to "no limit" instead of a broken app.
+async function bumpDailyUsage(base, serviceRole, userId, kind) {
+    try {
+        const res = await fetch(`${base}/rest/v1/rpc/bump_ai_usage`, {
+            method: 'POST',
+            headers: {
+                apikey: serviceRole,
+                Authorization: `Bearer ${serviceRole}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ p_user_id: userId, p_kind: kind })
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const row = Array.isArray(data) ? data[0] : data;
+        if (!row) return null;
+        return Number(kind === 'vision' ? row.vision_count : row.chat_count) || 0;
+    } catch (e) {
+        return null;
+    }
 }

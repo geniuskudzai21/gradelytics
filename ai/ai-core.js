@@ -90,10 +90,35 @@ function buildSystemMessage() {
     };
 }
 
+// The server counts AI usage per account, so every AI call carries the signed-in
+// user's access token. Missing token just means the request is anonymous — the
+// server decides whether to count it.
+async function aiAuthHeaders() {
+    try {
+        if (typeof GradelyticsDB === 'undefined' || typeof GradelyticsDB.getSession !== 'function') return {};
+        const { session } = await GradelyticsDB.getSession();
+        const token = session && session.access_token;
+        return token ? { Authorization: `Bearer ${token}` } : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function aiError(response, raw, fallback) {
+    let payload = null;
+    try { payload = JSON.parse(raw); } catch (e) { payload = null; }
+    const message = payload && payload.message ? payload.message : fallback;
+    const err = new Error(message);
+    err.status = response.status;
+    err.isQuota = !!(payload && payload.error === 'ai_quota_exceeded');
+    err.isAuth = !!(payload && payload.error === 'ai_unauthenticated');
+    return err;
+}
+
 async function callAI(messages, extraBody = {}) {
     const response = await fetch(AI_API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await aiAuthHeaders()) },
         body: JSON.stringify({
             requestType: 'chat',
             messages: messages,
@@ -105,7 +130,7 @@ async function callAI(messages, extraBody = {}) {
     });
     if (!response.ok) {
         const errData = await response.text();
-        throw new Error(`API error (${response.status}): ${errData}`);
+        throw aiError(response, errData, `API error (${response.status}): ${errData}`);
     }
     const data = await response.json();
     return cleanAIOutput(data.choices[0].message.content);
@@ -143,7 +168,7 @@ function extractJSONArray(text) {
 async function callAIVision(messages, extraBody = {}) {
     const response = await fetch(AI_API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await aiAuthHeaders()) },
         body: JSON.stringify({
             requestType: 'vision',
             messages: messages,
@@ -155,7 +180,7 @@ async function callAIVision(messages, extraBody = {}) {
     });
     if (!response.ok) {
         const errData = await response.text();
-        throw new Error(`Vision API error (${response.status}): ${errData}`);
+        throw aiError(response, errData, `Vision API error (${response.status}): ${errData}`);
     }
     const data = await response.json();
     let raw = data.choices[0].message.content;

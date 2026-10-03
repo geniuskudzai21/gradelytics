@@ -22,14 +22,19 @@ function sendChatMessage() {
         callAI(apiMessages).then(reply => {
             hideChatTyping();
             addChatMessage('assistant', reply);
-        }).catch(() => {
+        }).catch(err => {
             hideChatTyping();
-            addChatMessage('assistant', 'Lots of users are accessing the app right now. Please try again in a moment.');
+            addChatMessage('assistant', aiFailureMessage(err));
         });
-    } catch {
+    } catch (err) {
         hideChatTyping();
-        addChatMessage('assistant', 'Lots of users are accessing the app right now. Please try again in a moment.');
+        addChatMessage('assistant', aiFailureMessage(err));
     }
+}
+
+function aiFailureMessage(err) {
+    if (err && (err.isQuota || err.isAuth)) return err.message;
+    return 'Lots of users are accessing the app right now. Please try again in a moment.';
 }
 
 function addChatMessage(role, content) {
