@@ -818,3 +818,90 @@ body {
         animation: none;
     }
 }
+
+/* ═══════════════════════════════════════════════════════
+   Wide screens
+   The marquee cards are sized from the viewport width, so on a
+   large monitor the cards stretch while everything inside them
+   stays at the small-screen size. Scale the inner type up so the
+   items read at the same weight as the space they occupy.
+   ═══════════════════════════════════════════════════════ */
+@media (min-width: 1600px) {
+    .feature-card--large { padding: var(--sp-8); }
+    .feature-card--large h3 { font-size: 26px; }
+    .feature-card--large p { font-size: 17px; }
+    .feature-icon {
+        width: 64px; height: 64px;
+        font-size: 30px;
+        margin-bottom: var(--sp-6);
+    }
+    .feature-tag { font-size: 13px; padding: 5px 14px; }
+
+    .pain-grid { gap: var(--sp-8); }
+    .pain-card { padding: var(--sp-8); }
+    .pain-icon { font-size: 44px; margin-bottom: var(--sp-5); }
+    .pain-card h3 { font-size: 22px; }
+    .pain-card p { font-size: 17px; }
+
+    .steps-grid { gap: var(--sp-8); }
+    .step-card { max-width: none; padding: var(--sp-10) var(--sp-8); }
+    .step-card h3 { font-size: 23px; }
+    .step-card p { font-size: 17px; }
+    .step-icon { font-size: 34px; }
+    .step-number {
+        width: 40px; height: 40px;
+        top: -20px;
+        font-size: 17px;
+    }
+
+    .proof-bar-inner { gap: var(--sp-12); }
+    .proof-stat-value { font-size: 38px; }
+    .proof-stat-label { font-size: 14px; }
+    .proof-divider { height: 52px; }
+
+    .section-heading h2 { font-size: 48px; }
+    .section-sub { font-size: 19px; max-width: 760px; }
+    .section-tag { font-size: 14px; }
+
+    .hero-sub { font-size: 20px; max-width: 760px; }
+    .hero-kpi-value { font-size: 40px; }
+    .hero-kpi-label { font-size: 14px; }
+}
+
+@media (min-width: 2000px) {
+    .feature-card--large { padding: var(--sp-10); }
+    .feature-card--large h3 { font-size: 32px; }
+    .feature-card--large p { font-size: 20px; }
+    .feature-icon {
+        width: 80px; height: 80px;
+        font-size: 38px;
+        margin-bottom: var(--sp-8);
+    }
+    .feature-tag { font-size: 15px; }
+
+    .pain-card { padding: var(--sp-10); }
+    .pain-icon { font-size: 56px; }
+    .pain-card h3 { font-size: 27px; }
+    .pain-card p { font-size: 20px; }
+
+    .step-card { padding: var(--sp-12) var(--sp-10); }
+    .step-card h3 { font-size: 29px; }
+    .step-card p { font-size: 20px; }
+    .step-icon { font-size: 42px; }
+    .step-number {
+        width: 50px; height: 50px;
+        top: -25px;
+        font-size: 21px;
+    }
+
+    .proof-stat-value { font-size: 48px; }
+    .proof-stat-label { font-size: 16px; }
+
+    .section-heading h2 { font-size: 58px; }
+    .section-sub { font-size: 22px; max-width: 920px; }
+    .section-tag { font-size: 16px; }
+
+    .hero-sub { font-size: 23px; max-width: 920px; }
+    .hero-kpi-value { font-size: 50px; }
+    .hero-kpi-label { font-size: 16px; }
+}
