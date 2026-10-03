@@ -251,15 +251,6 @@
     }
 
     /* ── AI Hub mobile ── */
-    .whatif-form {
-        grid-template-columns: 1fr;
-    }
-
-    .whatif-weight-seg {
-        padding: 6px 10px;
-        font-size: 11px;
-    }
-
     .ai-tab {
         padding: 10px 14px;
         font-size: 13px;
@@ -409,15 +400,5 @@
 
     .ai-panel-header i {
         font-size: 26px;
-    }
-
-    .whatif-class {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--sp-2);
-    }
-
-    .whatif-badge {
-        font-size: 18px;
     }
 }
