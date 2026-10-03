@@ -416,7 +416,7 @@
                 label: 'Active Users',
                 value: fmt(stats.activeUsers),
                 delta: '<span class="kpi-chip kpi-chip--neutral">' + (stats.activeUserPct || 0) + '%</span>',
-                sub: 'of all accounts are engaged',
+                sub: 'using the app right now',
                 spark: messagesS,
                 color: '#14C9AE'
             },
@@ -640,9 +640,9 @@
         const items = [
             { icon: 'bx-trophy', label: 'Most common grade', value: stats.mostCommonGrade || '\u2014' },
             { icon: 'bx-target-lock', label: 'Overall average', value: stats.overallAverage == null ? '\u2014' : stats.overallAverage + '%' },
-            { icon: 'bx-chat', label: 'Messages / active user', value: stats.avgMessagesPerActiveUser || '0' },
+            { icon: 'bx-chat', label: 'Messages / engaged user', value: stats.avgMessagesPerActiveUser || '0' },
             { icon: 'bx-user-plus', label: 'New users (30d)', value: fmt((stats.trends || {}).users30d) },
-            { icon: 'bx-user-check', label: 'Engagement', value: (stats.activeUserPct || 0) + '%' },
+            { icon: 'bx-user-check', label: 'Ever engaged', value: (stats.engagedUserPct || 0) + '%' },
             { icon: 'bx-timer', label: 'Time on app (7d)', value: fmtDuration((stats.trends || {}).usage7d) }
         ];
         row.innerHTML = items.map(i => '' +
@@ -833,9 +833,13 @@
     }
 
     function statusBadge(u) {
-        return u.active
-            ? '<span class="badge badge--active">Active</span>'
-            : '<span class="badge">Inactive</span>';
+        if (u.active) {
+            return '<span class="badge badge--active">Active</span>';
+        }
+        if (u.engaged) {
+            return '<span class="badge">Offline</span>';
+        }
+        return '<span class="badge">Never used</span>';
     }
 
     /* ── User detail ── */

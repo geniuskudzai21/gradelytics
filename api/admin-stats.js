@@ -1,5 +1,10 @@
 import { timingSafeEqual } from 'crypto';
 
+// A user counts as active while they are actually using the app. The client
+// flushes a usage chunk roughly every 60s, so the window has to be wider than
+// the flush cadence — otherwise nobody would ever look active between flushes.
+const ACTIVE_WINDOW_MS = 90 * 1000;
+
 export default async function handler(req, res) {
     if (req.method !== 'GET' && req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -57,11 +62,25 @@ export default async function handler(req, res) {
             usageByUser.set(u.user_id, (usageByUser.get(u.user_id) || 0) + s);
         });
 
+        // Presence: when each user was last seen using the app. A usage chunk
+        // covers [started_at, started_at + duration], so the end of a user's
+        // latest chunk is their last moment with the dashboard visible.
+        const lastSeenByUser = new Map();
+        (usage || []).forEach(u => {
+            const started = u.started_at ? new Date(u.started_at).getTime() : NaN;
+            if (isNaN(started)) return;
+            const end = started + (Number(u.duration_seconds) || 0) * 1000;
+            if (end > (lastSeenByUser.get(u.user_id) || 0)) lastSeenByUser.set(u.user_id, end);
+        });
+        const cutoff = Date.now() - ACTIVE_WINDOW_MS;
+
         const rows = users.map(u => {
             const m = modCount.get(u.id) || 0;
             const c = chatCount.get(u.id) || 0;
             const a = unlockCount.get(u.id) || 0;
             const meta = u.user_metadata || u.raw_user_meta_data || {};
+            const lastSeen = lastSeenByUser.get(u.id) || 0;
+            const engaged = m > 0 || c > 0 || a > 0 || (usageByUser.get(u.id) || 0) > 0;
             return {
                 id: u.id,
                 email: u.email || '(no email)',
@@ -71,11 +90,14 @@ export default async function handler(req, res) {
                 chat_messages: c,
                 achievements: a,
                 time_spent_seconds: usageByUser.get(u.id) || 0,
-                active: m > 0 || c > 0 || a > 0 || (usageByUser.get(u.id) || 0) > 0
+                last_seen_at: lastSeen ? new Date(lastSeen).toISOString() : null,
+                active: lastSeen >= cutoff,
+                engaged: engaged
             };
         });
 
         const activeCount = rows.filter(r => r.active).length;
+        const engagedCount = rows.filter(r => r.engaged).length;
 
         // ── Performance & engagement ──
         const marks = modules.filter(m => m.mark != null && Number(m.mark) >= 0).map(m => Number(m.mark));
@@ -157,18 +179,20 @@ export default async function handler(req, res) {
             totalUsers: rows.length,
             activeUsers: activeCount,
             activeUserPct: rows.length ? Math.round((activeCount / rows.length) * 100) : 0,
+            engagedUsers: engagedCount,
+            engagedUserPct: rows.length ? Math.round((engagedCount / rows.length) * 100) : 0,
             totalModules: modules.length,
             totalChatMessages: chat.length,
             totalAchievements: unlocks.length,
             totalTimeSeconds,
-            avgSecondsPerActiveUser: activeCount ? Math.round(totalTimeSeconds / activeCount) : 0,
+            avgSecondsPerActiveUser: engagedCount ? Math.round(totalTimeSeconds / engagedCount) : 0,
             overallAverage,
             mostCommonGrade,
             gradeDistribution,
             topModules,
             achievementBreakdown,
             averageMarkByYear,
-            avgMessagesPerActiveUser: activeCount ? +(chat.length / activeCount).toFixed(1) : 0,
+            avgMessagesPerActiveUser: engagedCount ? +(chat.length / engagedCount).toFixed(1) : 0,
             signupsByDay: series.signups.slice(-30),
             series,
                 trends: {
