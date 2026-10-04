@@ -24,7 +24,6 @@
 
     const VIEW_META = {
         overview: { title: 'Overview', subtitle: 'High-level health and activity across your platform.' },
-        analytics: { title: 'Analytics', subtitle: 'Deep-dive into engagement, results and growth trends.' },
         users: { title: 'Users', subtitle: 'Browse, inspect, edit and remove accounts.' },
         'user-detail': { title: 'User details', subtitle: '' }
     };
@@ -256,11 +255,6 @@
             renderOverviewUsers((stats.users || []).slice()
                 .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
                 .slice(0, 8));
-        } else if (currentView === 'analytics') {
-            renderInsights();
-            renderGradeDetail();
-            renderGrowth();
-            renderUsage();
         } else if (currentView === 'users') {
             const search = document.getElementById('users-search');
             renderUsers(search ? search.value : '');
@@ -268,9 +262,6 @@
     }
 
     loaders.overview = async function () {
-        if (await fetchStats()) renderCurrent();
-    };
-    loaders.analytics = async function () {
         if (await fetchStats()) renderCurrent();
     };
     loaders.users = async function () {
@@ -457,6 +448,18 @@
                 color: '#F0A83D'
             },
             {
+                id: 'ai',
+                icon: 'bx-bot',
+                label: 'AI Calls Today',
+                value: fmt(stats.aiCallsToday),
+                delta: (stats.aiAtLimitCount || 0) > 0
+                    ? '<span class="kpi-chip kpi-chip--danger">' + stats.aiAtLimitCount + ' at limit</span>'
+                    : '<span class="kpi-chip kpi-chip--neutral">' + fmt(stats.aiUsersToday) + ' users</span>',
+                sub: fmt(stats.aiChatCallsToday) + ' chat / ' + fmt(stats.aiVisionCallsToday) + ' image',
+                spark: messagesS,
+                color: '#a855f7'
+            },
+            {
                 id: 'time',
                 icon: 'bx-timer',
                 label: 'Time on App',
@@ -623,111 +626,6 @@
                 }]
             },
             options: horizontalOptions()
-        });
-    }
-
-    /* ── Analytics ── */
-
-    function renderInsights() {
-        const row = document.getElementById('insight-row');
-        if (!row || !stats) return;
-        const items = [
-            { icon: 'bx-trophy', label: 'Most common grade', value: stats.mostCommonGrade || '\u2014' },
-            { icon: 'bx-target-lock', label: 'Overall average', value: stats.overallAverage == null ? '\u2014' : stats.overallAverage + '%' },
-            { icon: 'bx-chat', label: 'Messages / engaged user', value: stats.avgMessagesPerActiveUser || '0' },
-            { icon: 'bx-user-plus', label: 'New users (30d)', value: fmt((stats.trends || {}).users30d) },
-            { icon: 'bx-user-check', label: 'Ever engaged', value: (stats.engagedUserPct || 0) + '%' },
-            {
-                icon: 'bx-bot',
-                label: 'AI calls today',
-                value: (stats.aiCallsToday || 0) + ' <small>(' + (stats.aiChatCallsToday || 0) + ' chat / ' + (stats.aiVisionCallsToday || 0) + ' img)</small>',
-                spark: messagesS,
-                color: '#a855f7'
-            },
-            { icon: 'bx-timer', label: 'Time on app (7d)', value: fmtDuration((stats.trends || {}).usage7d) }
-        ];
-        row.innerHTML = items.map(i => '' +
-            '<div class="insight-card">' +
-                '<span class="insight-icon"><i class="bx ' + i.icon + '"></i></span>' +
-                '<div class="insight-body">' +
-                    '<span class="insight-label">' + i.label + '</span>' +
-                    '<strong class="insight-value">' + i.value + '</strong>' +
-                '</div>' +
-            '</div>'
-        ).join('');
-    }
-
-    function renderGradeDetail() {
-        if (!stats) return;
-        const dist = stats.gradeDistribution || {};
-        const entries = Object.entries(dist).sort((a, b) => b[1] - a[1]);
-        makeChart('chart-grade-detail', {
-            type: 'bar',
-            data: {
-                labels: entries.map(e => e[0]),
-                datasets: [{
-                    label: 'Module records',
-                    data: entries.map(e => e[1]),
-                    backgroundColor: entries.map(e => gradeColor(e[0])),
-                    borderRadius: 4,
-                    maxBarThickness: 42
-                }]
-            },
-            options: baseOptions({ legend: true })
-        });
-    }
-
-    function renderGrowth() {
-        if (!stats) return;
-        const rows = seriesData('signups');
-        const labels = rows.map(r => shortDay(r.day));
-        const cum = cumulative(rows.map(r => r.count));
-        makeChart('chart-growth', {
-            type: 'line',
-            data: {
-                labels,
-                datasets: [{
-                    label: 'Total users',
-                    data: cum,
-                    borderColor: '#1D6FE0',
-                    backgroundColor: isDark() ? 'rgba(29,111,224,0.18)' : 'rgba(29,111,224,0.10)',
-                    fill: true,
-                    tension: 0.35,
-                    pointRadius: 0,
-                    borderWidth: 2
-                }]
-            },
-            options: baseOptions({ legend: true })
-        });
-    }
-
-    function renderUsage() {
-        if (!stats) return;
-        const rows = seriesData('usage');
-        const labels = rows.map(r => shortDay(r.day));
-        const seconds = rows.map(r => r.seconds);
-        const opts = baseOptions({ legend: true });
-        opts.plugins.tooltip.callbacks = {
-            label: function (ctx) { return ' ' + fmtDuration(ctx.raw); }
-        };
-        opts.scales.y.ticks.callback = function (v) {
-            if (v >= 3600 && v % 3600 === 0) return (v / 3600) + 'h';
-            if (v >= 60 && v % 60 === 0) return (v / 60) + 'm';
-            return v;
-        };
-        makeChart('chart-usage', {
-            type: 'bar',
-            data: {
-                labels,
-                datasets: [{
-                    label: 'Time on app',
-                    data: seconds,
-                    backgroundColor: 'rgba(176,122,224,0.55)',
-                    borderRadius: 3,
-                    maxBarThickness: 18
-                }]
-            },
-            options: opts
         });
     }
 
@@ -961,7 +859,18 @@
     /* ── Init ── */
 
     document.addEventListener('DOMContentLoaded', function () {
+        (async function () {
         try { adminPassword = sessionStorage.getItem('gradelytics_admin_password') || ''; } catch (e) { /* ignore */ }
+        if (!adminPassword) {
+            // Promoted admins sign in with Supabase instead of the master
+            // ADMIN_PASSWORD, so fall back to their live access token.
+            try {
+                const token = (typeof GradelyticsDB !== 'undefined' && GradelyticsDB.getAccessToken)
+                    ? await GradelyticsDB.getAccessToken()
+                    : null;
+                if (token) adminPassword = token;
+            } catch (e) { /* ignore */ }
+        }
         if (!adminPassword) {
             window.location.href = 'dashboard.html';
             return;
@@ -1159,5 +1068,6 @@
         }
 
         switchView('overview');
+        })();
     });
 })();
