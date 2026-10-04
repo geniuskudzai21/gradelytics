@@ -124,12 +124,6 @@
         return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     }
 
-    function initialsOf(u) {
-        const name = (u && (u.display_name || u.email)) || '?';
-        const parts = name.replace(/[^a-zA-Z0-9 ]/g, '').trim().split(/\s+/);
-        return ((parts[0] || '?')[0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
-    }
-
     function average(modules) {
         if (!modules || !modules.length) return '\u2014';
         const total = modules.reduce((s, m) => s + (Number(m.mark) || 0), 0);
@@ -752,7 +746,7 @@
             tr.style.cursor = 'pointer';
             tr.addEventListener('click', () => openUserDetail(u.id));
             tr.innerHTML =
-                '<td>' + userCell(u) + '</td>' +
+                '<td class="cell-email">' + escapeHtml(u.email || '—') + '</td>' +
                 '<td>' + formatDate(u.created_at) + '</td>' +
                 '<td>' + u.modules + '</td>' +
                 '<td>' + u.chat_messages + '</td>' +
@@ -812,7 +806,7 @@
         filtered.forEach(u => {
             const tr = document.createElement('tr');
             tr.innerHTML =
-                '<td>' + userCell(u) + '</td>' +
+                '<td class="cell-email">' + escapeHtml(u.email || '—') + '</td>' +
                 '<td>' + formatDate(u.created_at) + '</td>' +
                 '<td>' + u.modules + '</td>' +
                 '<td>' + u.chat_messages + '</td>' +
@@ -826,15 +820,6 @@
                 '</div></td>';
             tbody.appendChild(tr);
         });
-    }
-
-    function userCell(u) {
-        const email = u.email || 'User';
-        return '<div class="user-cell">' +
-            '<span class="user-avatar">' + escapeHtml(initialsOf(u)) + '</span>' +
-            '<span class="user-cell-main">' +
-            '<strong>' + escapeHtml(email) + '</strong>' +
-            '</span></div>';
     }
 
     function statusBadge(u) {
