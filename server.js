@@ -150,16 +150,34 @@ const server = http.createServer(async (req, res) => {
 
         const authHeader = req.headers.authorization || '';
         const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
-        let email = null;
-        if (token) {
-            const claims = decodeTokenClaims(token);
-            if (claims && claims.email) email = String(claims.email).toLowerCase();
+        if (!token) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ isAdmin: false }));
         }
 
+        const claims = decodeTokenClaims(token);
+        const email = claims && claims.email ? String(claims.email).toLowerCase() : null;
+        if (email && adminEmails.includes(email)) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ isAdmin: true, via: 'allowlist' }));
+        }
+
+        /* Promoted admins carry their role in profiles, not in ADMIN_EMAILS. */
+        let role = null;
+        try {
+            const base = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
+            const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+            const uid = claims && claims.sub;
+            if (base && key && uid) {
+                const rows = await fetchJson(`${base}/rest/v1/profiles?select=role&id=eq.${encodeURIComponent(uid)}&limit=1`, {
+                    apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json'
+                });
+                role = Array.isArray(rows) && rows.length ? rows[0].role : null;
+            }
+        } catch (err) { /* profiles table may not exist yet */ }
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ isAdmin: !!(email && adminEmails.includes(email)) }));
-        return;
+        return res.end(JSON.stringify({ isAdmin: role === 'admin', via: role === 'admin' ? 'role' : undefined }));
     }
 
     if (req.method === 'POST' && req.url === '/api/delete-account') {
@@ -202,34 +220,15 @@ const server = http.createServer(async (req, res) => {
     }
 
     if ((req.method === 'GET' || req.method === 'POST') && req.url === '/api/admin-stats') {
-        const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-        const supabaseUrl = process.env.SUPABASE_URL;
-        const adminPassword = process.env.ADMIN_PASSWORD || '';
-
-        if (!serviceRole || !supabaseUrl) {
-            res.writeHead(500, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ error: 'SUPABASE_SERVICE_ROLE_KEY is not configured.' }));
+        const auth = await authorizeAdmin(req);
+        if (!auth.ok) {
+            res.writeHead(auth.status, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ error: auth.error }));
         }
-        if (!adminPassword) {
-            res.writeHead(500, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ error: 'ADMIN_PASSWORD is not configured.' }));
-        }
+        const { base, headers } = auth;
 
-        const authHeader = req.headers.authorization || '';
-        const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-        if (!provided || !safeEqual(adminPassword, provided)) {
-            res.writeHead(403, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ error: 'Access denied. Invalid admin password.' }));
-        }
-
-        try {
-            const base = supabaseUrl.replace(/\/$/, '');
-            const headers = {
-                'apikey': serviceRole,
-                'Authorization': `Bearer ${serviceRole}`,
-                'Accept': 'application/json'
-            };
-
+try {
+            // All auth users come from the GoTrue admin API (service_role bypasses RLS).
             const usersData = await fetchJson(`${base}/auth/v1/admin/users?per_page=1000`, headers);
             const users = usersData.users || (usersData.data && usersData.data.users) || [];
 
@@ -238,12 +237,17 @@ const server = http.createServer(async (req, res) => {
                 usage = await fetchJson(`${base}/rest/v1/usage_sessions?select=user_id,started_at,duration_seconds`, headers);
             } catch (e) { /* usage_sessions table may not exist yet */ }
 
-            const [modules, chat, unlocks, aiUsage] = await Promise.all([
+            const [modules, chat, unlocks, aiUsage, profiles] = await Promise.all([
                 fetchJson(`${base}/rest/v1/modules?select=user_id,name,year,part,semester,mark,grade,created_at`, headers),
                 fetchJson(`${base}/rest/v1/chat_messages?select=user_id,role,created_at`, headers),
                 fetchJson(`${base}/rest/v1/achievement_unlocks?select=user_id,unlock_key,unlocked_at`, headers),
-                fetchJson(`${base}/rest/v1/ai_usage?select=user_id,chat_count,vision_count&day=eq.${todayUtc()}`, headers).catch(() => [])
+                fetchJson(`${base}/rest/v1/ai_usage?select=user_id,chat_count,vision_count&day=eq.${todayUtc()}`, headers).catch(() => []),
+                fetchJson(`${base}/rest/v1/profiles?select=id,role`, headers).catch(() => [])
             ]);
+
+            // ── Admin roles (promoted from the console) ──
+            const roleByUser = new Map();
+            (profiles || []).forEach(p => roleByUser.set(p.id, p.role === 'admin' ? 'admin' : 'user'));
 
             // ── AI quota usage today ──
             const aiByUser = new Map();
@@ -311,7 +315,8 @@ const server = http.createServer(async (req, res) => {
                     ai_vision_today: ai.vision,
                     ai_chat_remaining: Math.max(0, aiLimits.chat - ai.chat),
                     ai_vision_remaining: Math.max(0, aiLimits.vision - ai.vision),
-                    ai_at_limit: ai.chat >= aiLimits.chat || ai.vision >= aiLimits.vision
+                    ai_at_limit: ai.chat >= aiLimits.chat || ai.vision >= aiLimits.vision,
+                    role: roleByUser.get(u.id) || 'user'
                 };
             });
 
@@ -430,6 +435,7 @@ const server = http.createServer(async (req, res) => {
                 aiUsersToday: aiByUser.size,
                 aiAtLimitCount: rows.filter(r => r.ai_at_limit).length,
                 aiLimits: aiLimits,
+                adminCount: rows.filter(r => r.role === 'admin').length,
                 totalModules: modules.length,
                 totalChatMessages: chat.length,
                 totalAchievements: unlocks.length,
@@ -464,35 +470,15 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.url.startsWith('/api/admin-user')) {
-        const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-        const supabaseUrl = process.env.SUPABASE_URL;
-        const adminPassword = process.env.ADMIN_PASSWORD || '';
-
-        if (!serviceRole || !supabaseUrl) {
-            res.writeHead(500, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ error: 'SUPABASE_SERVICE_ROLE_KEY is not configured.' }));
-        }
-        if (!adminPassword) {
-            res.writeHead(500, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ error: 'ADMIN_PASSWORD is not configured.' }));
-        }
-
-        const authHeader = req.headers.authorization || '';
-        const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-        if (!provided || !safeEqual(adminPassword, provided)) {
-            res.writeHead(403, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ error: 'Access denied. Invalid admin password.' }));
+        const auth = await authorizeAdmin(req);
+        if (!auth.ok) {
+            res.writeHead(auth.status, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ error: auth.error }));
         }
 
         const parsedUrl = new URL(req.url, 'http://localhost');
         const id = parsedUrl.searchParams.get('id') || '';
-        const base = supabaseUrl.replace(/\/$/, '');
-        const headers = {
-            'apikey': serviceRole,
-            'Authorization': `Bearer ${serviceRole}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        };
+        const { base, headers } = auth;
 
         try {
             if (req.method === 'GET') {
@@ -513,6 +499,12 @@ const server = http.createServer(async (req, res) => {
                     usage = await fetchJson(`${base}/rest/v1/usage_sessions?select=started_at,duration_seconds&user_id=eq.${encodeURIComponent(id)}&order=started_at.asc`, headers);
                 } catch (e) { /* usage_sessions table may not exist yet */ }
 
+                let profile = null;
+                try {
+                    const rows = await fetchJson(`${base}/rest/v1/profiles?select=role&id=eq.${encodeURIComponent(id)}&limit=1`, headers);
+                    profile = Array.isArray(rows) && rows.length ? rows[0] : null;
+                } catch (e) { /* profiles table may not exist yet */ }
+
                 const [modules, chat, achievements] = await Promise.all([
                     fetchJson(`${base}/rest/v1/modules?select=id,name,year,part,semester,mark,grade&user_id=eq.${encodeURIComponent(id)}&order=year.asc,semester.asc,id.asc`, headers),
                     fetchJson(`${base}/rest/v1/chat_messages?select=id,role,content,created_at&user_id=eq.${encodeURIComponent(id)}&order=created_at.asc,id.asc`, headers),
@@ -530,6 +522,7 @@ const server = http.createServer(async (req, res) => {
                         created_at: user.created_at || user.createdAt || null,
                         last_sign_in_at: user.last_sign_in_at || user.lastSignInAt || null,
                         phone: user.phone || null,
+                        role: profile ? profile.role : 'user',
                         time_spent_seconds: timeSpentSeconds
                     },
                     modules,
@@ -554,6 +547,24 @@ const server = http.createServer(async (req, res) => {
                     return res.end(JSON.stringify({ error: 'Invalid JSON body.' }));
                 }
 
+                /* Promote / demote — lives in profiles, not auth metadata. */
+                if (typeof parsed.role === 'string') {
+                    const role = parsed.role === 'admin' ? 'admin' : 'user';
+                    if (auth.actor.kind !== 'owner' && auth.actor.userId === id) {
+                        res.writeHead(403, { 'Content-Type': 'application/json' });
+                        return res.end(JSON.stringify({ error: 'You cannot change your own admin role.' }));
+                    }
+                    const roleErr = await setUserRole(base, headers, id, role);
+                    if (roleErr) {
+                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                        return res.end(JSON.stringify({ error: roleErr }));
+                    }
+                    if (Object.keys(parsed).length === 1) {
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        return res.end(JSON.stringify({ ok: true, role }));
+                    }
+                }
+
                 const curRes = await fetch(`${base}/auth/v1/admin/users/${id}`, { headers });
                 if (!curRes.ok) {
                     res.writeHead(404, { 'Content-Type': 'application/json' });
@@ -570,8 +581,8 @@ const server = http.createServer(async (req, res) => {
                     if (clean) payload.user_metadata = { ...curMeta, display_name: clean };
                 }
                 if (Object.keys(payload).length === 0) {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
-                    return res.end(JSON.stringify({ error: 'Nothing to update.' }));
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ ok: true }));
                 }
 
                 const updRes = await fetch(`${base}/auth/v1/admin/users/${id}`, {
@@ -885,6 +896,95 @@ function safeEqual(a, b) {
     const bufB = Buffer.from(String(b));
     if (bufA.length !== bufB.length) return false;
     return crypto.timingSafeEqual(bufA, bufB);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Admin authorisation (self-hosted mirror of api/_admin-guard.js).
+
+   Accepts either the master ADMIN_PASSWORD (the owner) or a Supabase access
+   token whose profiles.role = 'admin' (someone promoted from the console).
+   Returns { ok: false, status, error } or { ok: true, actor, base, headers }.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+async function authorizeAdmin(req) {
+    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const adminPassword = process.env.ADMIN_PASSWORD || '';
+
+    if (!serviceRole || !supabaseUrl) {
+        return { ok: false, status: 500, error: 'SUPABASE_SERVICE_ROLE_KEY is not configured.' };
+    }
+    if (!adminPassword) {
+        return { ok: false, status: 500, error: 'ADMIN_PASSWORD is not configured.' };
+    }
+
+    const base = supabaseUrl.replace(/\/$/, '');
+    const headers = {
+        'apikey': serviceRole,
+        'Authorization': `Bearer ${serviceRole}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    };
+
+    const authHeader = req.headers.authorization || '';
+    const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!provided) {
+        return { ok: false, status: 403, error: 'Access denied. Admin credentials required.' };
+    }
+
+    if (safeEqual(adminPassword, provided)) {
+        return { ok: true, actor: { kind: 'owner', userId: null }, base, headers, serviceRole };
+    }
+
+    const authRes = await fetch(`${base}/auth/v1/user`, {
+        headers: { apikey: serviceRole, Authorization: `Bearer ${provided}` }
+    });
+    if (!authRes.ok) {
+        return { ok: false, status: 403, error: 'Access denied. Invalid or expired session.' };
+    }
+    const user = await authRes.json();
+    if (!user || !user.id) {
+        return { ok: false, status: 403, error: 'Access denied. Invalid or expired session.' };
+    }
+
+    const role = await fetchJsonSafe(`${base}/rest/v1/profiles?select=role&id=eq.${encodeURIComponent(user.id)}&limit=1`, headers);
+    if (!Array.isArray(role) || !role.length || role[0].role !== 'admin') {
+        return { ok: false, status: 403, error: 'Access denied. Admin role required.' };
+    }
+
+    return { ok: true, actor: { kind: 'admin', userId: user.id }, base, headers, serviceRole };
+}
+
+async function fetchJsonSafe(url, headers) {
+    try {
+        const res = await fetch(url, { headers });
+        if (!res.ok) return null;
+        return await res.json();
+    } catch (e) {
+        return null;
+    }
+}
+
+async function setUserRole(base, headers, id, role) {
+    const upd = await fetch(`${base}/rest/v1/profiles?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: Object.assign({}, headers, { Prefer: 'return=representation' }),
+        body: JSON.stringify({ role })
+    });
+    if (upd.ok) {
+        const rows = await upd.json().catch(() => []);
+        if (Array.isArray(rows) && rows.length) return null;
+    }
+
+    const authUser = await fetch(`${base}/auth/v1/admin/users/${id}`, { headers });
+    const email = authUser.ok ? ((await authUser.json()).email || null) : null;
+    const ins = await fetch(`${base}/rest/v1/profiles`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ id, email, role })
+    });
+    if (!ins.ok) return 'Role update failed: ' + (await ins.text());
+    return null;
 }
 
 function dailySeries(list, dateField, days) {

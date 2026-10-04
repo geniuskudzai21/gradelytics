@@ -1,34 +1,17 @@
-import { timingSafeEqual } from 'crypto';
+import { authorizeAdmin, serviceHeaders } from './_admin-guard.js';
 
 export default async function handler(req, res) {
     if (req.method !== 'GET' && req.method !== 'PUT' && req.method !== 'DELETE') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const adminPassword = process.env.ADMIN_PASSWORD || '';
-
-    if (!serviceRole || !supabaseUrl) {
-        return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY is not configured.' });
-    }
-    if (!adminPassword) {
-        return res.status(500).json({ error: 'ADMIN_PASSWORD is not configured.' });
+    const auth = await authorizeAdmin(req);
+    if (!auth.ok) {
+        return res.status(auth.status).json({ error: auth.error });
     }
 
-    const authHeader = req.headers.authorization || '';
-    const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    if (!provided || !safeEqual(adminPassword, provided)) {
-        return res.status(403).json({ error: 'Access denied. Invalid admin password.' });
-    }
-
-    const base = supabaseUrl.replace(/\/$/, '');
-    const headers = {
-        'apikey': serviceRole,
-        'Authorization': `Bearer ${serviceRole}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-    };
+    const base = auth.supabaseUrl.replace(/\/$/, '');
+    const headers = serviceHeaders(auth.serviceRole);
 
     const id = String((req.query && req.query.id) || '');
 
@@ -41,11 +24,12 @@ export default async function handler(req, res) {
             const user = await userRes.json();
             const meta = user.user_metadata || user.raw_user_meta_data || {};
 
-            const [modules, chat, achievements, usage] = await Promise.all([
+            const [modules, chat, achievements, usage, profile] = await Promise.all([
                 fetchRows(`${base}/rest/v1/modules?select=id,name,year,part,semester,mark,grade&user_id=eq.${encodeURIComponent(id)}&order=year.asc,semester.asc,id.asc`, headers),
                 fetchRows(`${base}/rest/v1/chat_messages?select=id,role,content,created_at&user_id=eq.${encodeURIComponent(id)}&order=created_at.asc,id.asc`, headers),
                 fetchRows(`${base}/rest/v1/achievement_unlocks?select=unlock_key,unlocked_at&user_id=eq.${encodeURIComponent(id)}&order=unlocked_at.asc`, headers),
-                fetchRows(`${base}/rest/v1/usage_sessions?select=started_at,duration_seconds&user_id=eq.${encodeURIComponent(id)}&order=started_at.asc`, headers)
+                fetchRows(`${base}/rest/v1/usage_sessions?select=started_at,duration_seconds&user_id=eq.${encodeURIComponent(id)}&order=started_at.asc`, headers),
+                fetchRows(`${base}/rest/v1/profiles?select=role&id=eq.${encodeURIComponent(id)}&limit=1`, headers)
             ]);
 
             const timeSpentSeconds = (usage || []).reduce((s, u) => s + (Number(u.duration_seconds) || 0), 0);
@@ -58,6 +42,7 @@ export default async function handler(req, res) {
                     created_at: user.created_at || user.createdAt || null,
                     last_sign_in_at: user.last_sign_in_at || user.lastSignInAt || null,
                     phone: user.phone || null,
+                    role: profile && profile.length ? profile[0].role : 'user',
                     time_spent_seconds: timeSpentSeconds
                 },
                 modules,
@@ -70,6 +55,19 @@ export default async function handler(req, res) {
         if (req.method === 'PUT') {
             if (!id) return res.status(400).json({ error: 'Missing user id.' });
             const body = req.body || {};
+
+            /* Promote / demote — lives in profiles, not auth metadata. */
+            if (typeof body.role === 'string') {
+                const role = body.role === 'admin' ? 'admin' : 'user';
+                if (auth.actor.kind !== 'owner' && auth.actor.userId === id) {
+                    return res.status(403).json({ error: 'You cannot change your own admin role.' });
+                }
+                const roleErr = await setRole(base, headers, id, role);
+                if (roleErr) return res.status(500).json({ error: roleErr });
+                if (Object.keys(body).length === 1) {
+                    return res.status(200).json({ ok: true, role });
+                }
+            }
 
             const curRes = await fetch(`${base}/auth/v1/admin/users/${id}`, { headers });
             if (!curRes.ok) return res.status(404).json({ error: 'User not found.' });
@@ -84,7 +82,7 @@ export default async function handler(req, res) {
                 if (clean) payload.user_metadata = { ...curMeta, display_name: clean };
             }
             if (Object.keys(payload).length === 0) {
-                return res.status(400).json({ error: 'Nothing to update.' });
+                return res.status(200).json({ ok: true });
             }
 
             const updRes = await fetch(`${base}/auth/v1/admin/users/${id}`, {
@@ -135,9 +133,27 @@ async function deleteRows(url, headers) {
     if (!res.ok) throw new Error('Failed to delete user data: ' + res.status);
 }
 
-function safeEqual(a, b) {
-    const bufA = Buffer.from(String(a));
-    const bufB = Buffer.from(String(b));
-    if (bufA.length !== bufB.length) return false;
-    return timingSafeEqual(bufA, bufB);
+/* Users who signed up before the profiles trigger existed have no row yet, so
+   fall back to creating one with the requested role. */
+async function setRole(base, headers, id, role) {
+    const upd = await fetch(`${base}/rest/v1/profiles?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: Object.assign({}, headers, { Prefer: 'return=representation' }),
+        body: JSON.stringify({ role })
+    });
+    if (upd.ok) {
+        const rows = await upd.json().catch(() => []);
+        if (Array.isArray(rows) && rows.length) return null;
+    }
+
+    const authUser = await fetch(`${base}/auth/v1/admin/users/${id}`, { headers });
+    const email = authUser.ok ? ((await authUser.json()).email || null) : null;
+
+    const ins = await fetch(`${base}/rest/v1/profiles`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ id, email, role })
+    });
+    if (!ins.ok) return 'Role update failed: ' + (await ins.text());
+    return null;
 }

@@ -6,6 +6,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const menuToggle = document.getElementById('menu-toggle');
     const backdrop = document.getElementById('sidebar-backdrop');
 
+    // Reveal the Admin link if the signed-in user is an admin (promoted or allowlisted).
+    (async function () {
+        try {
+            const db = window.GradelyticsDB;
+            if (db && typeof db.isAdmin === 'function' && (await db.isAdmin())) {
+                const nav = document.getElementById('nav-admin');
+                if (nav) nav.style.display = '';
+            }
+        } catch (e) {
+            /* ignore — link stays hidden */
+        }
+    })();
+
     function closeSidebar() {
         sidebar.classList.remove('active');
     }

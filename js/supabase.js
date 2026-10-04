@@ -108,6 +108,65 @@
         return data.user.id;
     }
 
+    /* The signed-in user's admin role, cached for the life of the tab.
+
+       `profiles` is not readable with the anon key (RLS allows the owner only,
+       and the Supabase client here uses the anon key), so we ask our own
+       /api/is-admin endpoint — it verifies the JWT server-side. Falls back to
+       'user' whenever anything is missing, which hides the admin link rather
+       than showing a link that would 403. */
+    let roleCache = null;
+    let roleUserId = null;
+
+    async function getRole() {
+        if (!sb) return 'user';
+        const uid = await getUserId();
+        if (!uid) {
+            roleCache = null;
+            roleUserId = null;
+            return 'user';
+        }
+        if (roleCache && roleUserId === uid) return roleCache;
+
+        const { session } = await getSession();
+        const token = session && session.access_token;
+        if (!token) return 'user';
+
+        let role = 'user';
+        try {
+            const res = await fetch('/api/is-admin', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (res.ok) {
+                const data = await res.json().catch(() => null);
+                if (data && data.isAdmin) role = 'admin';
+            }
+        } catch (e) { /* offline or endpoint missing → not an admin */ }
+
+        roleCache = role;
+        roleUserId = uid;
+        return role;
+    }
+
+    async function isAdmin() {
+        return (await getRole()) === 'admin';
+    }
+
+    /* Access token for server calls that authorise the caller themselves
+       (the admin console uses this when the signed-in user is a promoted
+       admin, instead of the master ADMIN_PASSWORD). */
+    async function getAccessToken() {
+        if (!sb) return null;
+        const { session } = await getSession();
+        return (session && session.access_token) || null;
+    }
+
+    function resetRoleCache() {
+        roleCache = null;
+        roleUserId = null;
+    }
+
     async function signUp(email, password) {
         if (!sb) return { error: { message: 'Supabase is not configured.' } };
         const { data, error } = await sb.auth.signUp({ email, password });
@@ -167,6 +226,7 @@
 
     async function signOut() {
         try { sessionStorage.removeItem('gradelytics_admin_password'); } catch (e) { /* ignore */ }
+        resetRoleCache();
         // Flush the pending usage chunk while the session is still valid.
         await flushUsage(true);
         if (!sb) return;
@@ -1095,6 +1155,7 @@
                 currentDisplayName = GUEST_DISPLAY_NAME;
                 clearUserCache();
                 currentUserId = null;
+                resetRoleCache();
                 setInMemoryModules([]);
                 setInMemoryChat([]);
                 if (!isAuthPage && !isAdminPage) {
@@ -1158,6 +1219,9 @@
         saveAchievementUnlock: saveAchievementUnlock,
         resetAchievements: resetAchievements,
         getModules: getInMemoryModules,
-        loadUsageSessions: loadUsageSessions
+        loadUsageSessions: loadUsageSessions,
+        getRole: getRole,
+        isAdmin: isAdmin,
+        getAccessToken: getAccessToken
     };
 })();

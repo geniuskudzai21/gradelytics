@@ -1,4 +1,4 @@
-import { timingSafeEqual } from 'crypto';
+import { authorizeAdmin, serviceHeaders } from './_admin-guard.js';
 
 // A user counts as active while they are actually using the app. The client
 // flushes a usage chunk roughly every 60s, so the window has to be wider than
@@ -10,30 +10,14 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const adminPassword = process.env.ADMIN_PASSWORD || '';
-
-    if (!serviceRole || !supabaseUrl) {
-        return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY is not configured.' });
-    }
-    if (!adminPassword) {
-        return res.status(500).json({ error: 'ADMIN_PASSWORD is not configured.' });
-    }
-
-    const authHeader = req.headers.authorization || '';
-    const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    if (!provided || !safeEqual(adminPassword, provided)) {
-        return res.status(403).json({ error: 'Access denied. Invalid admin password.' });
+    const auth = await authorizeAdmin(req);
+    if (!auth.ok) {
+        return res.status(auth.status).json({ error: auth.error });
     }
 
     try {
-        const base = supabaseUrl.replace(/\/$/, '');
-        const headers = {
-            'apikey': serviceRole,
-            'Authorization': `Bearer ${serviceRole}`,
-            'Accept': 'application/json'
-        };
+        const base = auth.supabaseUrl.replace(/\/$/, '');
+        const headers = serviceHeaders(auth.serviceRole);
 
         // All auth users come from the GoTrue admin API (service_role bypasses RLS).
         const usersRes = await fetch(`${base}/auth/v1/admin/users?per_page=1000`, { headers });
@@ -41,13 +25,18 @@ export default async function handler(req, res) {
         const usersData = await usersRes.json();
         const users = usersData.users || (usersData.data && usersData.data.users) || [];
 
-        const [modules, chat, unlocks, usage, aiUsage] = await Promise.all([
+        const [modules, chat, unlocks, usage, aiUsage, profiles] = await Promise.all([
             fetchRows(`${base}/rest/v1/modules?select=user_id,name,year,part,semester,mark,grade,created_at`, headers),
             fetchRows(`${base}/rest/v1/chat_messages?select=user_id,role,created_at`, headers),
             fetchRows(`${base}/rest/v1/achievement_unlocks?select=user_id,unlock_key,unlocked_at`, headers),
             fetchRows(`${base}/rest/v1/usage_sessions?select=user_id,started_at,duration_seconds`, headers),
-            fetchRows(`${base}/rest/v1/ai_usage?select=user_id,chat_count,vision_count&day=eq.${todayUtc()}`, headers)
+            fetchRows(`${base}/rest/v1/ai_usage?select=user_id,chat_count,vision_count&day=eq.${todayUtc()}`, headers),
+            fetchRows(`${base}/rest/v1/profiles?select=id,role`, headers)
         ]);
+
+        // ── Admin roles (promoted from this console) ──
+        const roleByUser = new Map();
+        (profiles || []).forEach(p => roleByUser.set(p.id, p.role === 'admin' ? 'admin' : 'user'));
 
         // ── AI quota usage today ──
         const aiByUser = new Map();
@@ -115,7 +104,8 @@ export default async function handler(req, res) {
                 ai_vision_today: ai.vision,
                 ai_chat_remaining: Math.max(0, aiLimits.chat - ai.chat),
                 ai_vision_remaining: Math.max(0, aiLimits.vision - ai.vision),
-                ai_at_limit: ai.chat >= aiLimits.chat || ai.vision >= aiLimits.vision
+                ai_at_limit: ai.chat >= aiLimits.chat || ai.vision >= aiLimits.vision,
+                role: roleByUser.get(u.id) || 'user'
             };
         });
 
@@ -210,6 +200,7 @@ export default async function handler(req, res) {
             aiUsersToday: aiByUser.size,
             aiAtLimitCount: rows.filter(r => r.ai_at_limit).length,
             aiLimits: aiLimits,
+            adminCount: rows.filter(r => r.role === 'admin').length,
             totalModules: modules.length,
             totalChatMessages: chat.length,
             totalAchievements: unlocks.length,
@@ -294,11 +285,4 @@ function countBy(list, key) {
         map.set(k, (map.get(k) || 0) + 1);
     });
     return map;
-}
-
-function safeEqual(a, b) {
-    const bufA = Buffer.from(String(a));
-    const bufB = Buffer.from(String(b));
-    if (bufA.length !== bufB.length) return false;
-    return timingSafeEqual(bufA, bufB);
 }
