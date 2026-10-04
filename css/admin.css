@@ -551,6 +551,12 @@ button {
     border-color: transparent;
 }
 
+.badge--danger {
+    color: var(--color-danger, #DC2626);
+    background: var(--danger-bg);
+    border-color: transparent;
+}
+
 /* ── User detail ── */
 
 .detail-title {

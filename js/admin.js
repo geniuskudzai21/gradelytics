@@ -643,6 +643,13 @@
             { icon: 'bx-chat', label: 'Messages / engaged user', value: stats.avgMessagesPerActiveUser || '0' },
             { icon: 'bx-user-plus', label: 'New users (30d)', value: fmt((stats.trends || {}).users30d) },
             { icon: 'bx-user-check', label: 'Ever engaged', value: (stats.engagedUserPct || 0) + '%' },
+            {
+                icon: 'bx-bot',
+                label: 'AI calls today',
+                value: (stats.aiCallsToday || 0) + ' <small>(' + (stats.aiChatCallsToday || 0) + ' chat / ' + (stats.aiVisionCallsToday || 0) + ' img)</small>',
+                spark: messagesS,
+                color: '#a855f7'
+            },
             { icon: 'bx-timer', label: 'Time on app (7d)', value: fmtDuration((stats.trends || {}).usage7d) }
         ];
         row.innerHTML = items.map(i => '' +
@@ -806,10 +813,10 @@
             const tr = document.createElement('tr');
             tr.innerHTML =
                 '<td>' + userCell(u) + '</td>' +
-                '<td>' + escapeHtml(u.email) + '</td>' +
                 '<td>' + formatDate(u.created_at) + '</td>' +
                 '<td>' + u.modules + '</td>' +
                 '<td>' + u.chat_messages + '</td>' +
+                '<td>' + aiUsageCell(u) + '</td>' +
                 '<td>' + fmtDuration(u.time_spent_seconds) + '</td>' +
                 '<td>' + statusBadge(u) + '</td>' +
                 '<td><div class="row-actions">' +
@@ -822,13 +829,11 @@
     }
 
     function userCell(u) {
-        const name = (u.display_name || u.email || 'User');
-        const sub = u.display_name ? escapeHtml(u.email) : '';
+        const email = u.email || 'User';
         return '<div class="user-cell">' +
             '<span class="user-avatar">' + escapeHtml(initialsOf(u)) + '</span>' +
             '<span class="user-cell-main">' +
-            '<strong>' + escapeHtml(name) + '</strong>' +
-            (sub ? '<span>' + sub + '</span>' : '') +
+            '<strong>' + escapeHtml(email) + '</strong>' +
             '</span></div>';
     }
 
@@ -840,6 +845,20 @@
             return '<span class="badge">Offline</span>';
         }
         return '<span class="badge">Never used</span>';
+    }
+
+    // Chat / vision usage against today's cap, so you can see who is about to
+    // hit the free-tier limit before they start complaining.
+    function aiUsageCell(u) {
+        const chat = Number(u.ai_chat_today) || 0;
+        const vision = Number(u.ai_vision_today) || 0;
+        if (!chat && !vision) return '<span style="color:var(--muted)">—</span>';
+        const capped = u.ai_at_limit
+            ? '<span class="badge badge--danger">at limit</span>'
+            : '';
+        return '<span title="' + chat + ' chat / ' + vision + ' extractions">' +
+            '<strong>' + chat + '</strong> / <strong>' + vision + '</strong>' +
+            '</span> ' + capped;
     }
 
     /* ── User detail ── */

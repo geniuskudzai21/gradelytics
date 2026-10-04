@@ -41,12 +41,29 @@ export default async function handler(req, res) {
         const usersData = await usersRes.json();
         const users = usersData.users || (usersData.data && usersData.data.users) || [];
 
-        const [modules, chat, unlocks, usage] = await Promise.all([
+        const [modules, chat, unlocks, usage, aiUsage] = await Promise.all([
             fetchRows(`${base}/rest/v1/modules?select=user_id,name,year,part,semester,mark,grade,created_at`, headers),
             fetchRows(`${base}/rest/v1/chat_messages?select=user_id,role,created_at`, headers),
             fetchRows(`${base}/rest/v1/achievement_unlocks?select=user_id,unlock_key,unlocked_at`, headers),
-            fetchRows(`${base}/rest/v1/usage_sessions?select=user_id,started_at,duration_seconds`, headers)
+            fetchRows(`${base}/rest/v1/usage_sessions?select=user_id,started_at,duration_seconds`, headers),
+            fetchRows(`${base}/rest/v1/ai_usage?select=user_id,chat_count,vision_count&day=eq.${todayUtc()}`, headers)
         ]);
+
+        // ── AI quota usage today ──
+        const aiByUser = new Map();
+        let chatCallsToday = 0;
+        let visionCallsToday = 0;
+        (aiUsage || []).forEach(r => {
+            const c = Number(r.chat_count) || 0;
+            const v = Number(r.vision_count) || 0;
+            chatCallsToday += c;
+            visionCallsToday += v;
+            aiByUser.set(r.user_id, { chat: c, vision: v });
+        });
+        const aiLimits = {
+            chat: intEnv('AI_CHAT_DAILY_LIMIT', 20),
+            vision: intEnv('AI_VISION_DAILY_LIMIT', 8)
+        };
 
         const modCount = countBy(modules, 'user_id');
         const chatCount = countBy(chat, 'user_id');
@@ -81,6 +98,7 @@ export default async function handler(req, res) {
             const meta = u.user_metadata || u.raw_user_meta_data || {};
             const lastSeen = lastSeenByUser.get(u.id) || 0;
             const engaged = m > 0 || c > 0 || a > 0 || (usageByUser.get(u.id) || 0) > 0;
+            const ai = aiByUser.get(u.id) || { chat: 0, vision: 0 };
             return {
                 id: u.id,
                 email: u.email || '(no email)',
@@ -92,7 +110,12 @@ export default async function handler(req, res) {
                 time_spent_seconds: usageByUser.get(u.id) || 0,
                 last_seen_at: lastSeen ? new Date(lastSeen).toISOString() : null,
                 active: lastSeen >= cutoff,
-                engaged: engaged
+                engaged: engaged,
+                ai_chat_today: ai.chat,
+                ai_vision_today: ai.vision,
+                ai_chat_remaining: Math.max(0, aiLimits.chat - ai.chat),
+                ai_vision_remaining: Math.max(0, aiLimits.vision - ai.vision),
+                ai_at_limit: ai.chat >= aiLimits.chat || ai.vision >= aiLimits.vision
             };
         });
 
@@ -181,6 +204,12 @@ export default async function handler(req, res) {
             activeUserPct: rows.length ? Math.round((activeCount / rows.length) * 100) : 0,
             engagedUsers: engagedCount,
             engagedUserPct: rows.length ? Math.round((engagedCount / rows.length) * 100) : 0,
+            aiCallsToday: chatCallsToday + visionCallsToday,
+            aiChatCallsToday: chatCallsToday,
+            aiVisionCallsToday: visionCallsToday,
+            aiUsersToday: aiByUser.size,
+            aiAtLimitCount: rows.filter(r => r.ai_at_limit).length,
+            aiLimits: aiLimits,
             totalModules: modules.length,
             totalChatMessages: chat.length,
             totalAchievements: unlocks.length,
@@ -252,6 +281,10 @@ async function fetchRows(url, headers) {
     const res = await fetch(url, { headers });
     if (!res.ok) return [];
     return res.json();
+}
+
+function todayUtc() {
+    return new Date().toISOString().slice(0, 10);
 }
 
 function countBy(list, key) {
