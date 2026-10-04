@@ -53,4 +53,4 @@ node server.js
 
 ## Live Demo
 
-https://genius-pa.vercel.app
+https://gradelytics.space
