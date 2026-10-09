@@ -40,6 +40,12 @@ The application empowers students to understand their academic progress and rece
 
 See [supabase/README.md](supabase/README.md) for the full walkthrough.
 
+### Google sign-in
+
+"Continue with Google" needs one-time dashboard config in **both** Google Cloud
+Console and Supabase (client ID/secret + redirect URLs). Step-by-step:
+[GOOGLE_AUTH_SETUP.md](GOOGLE_AUTH_SETUP.md).
+
 ### AI keys
 
 Set `NVIDIA_API_KEY` (and optionally `NVIDIA_VISION_API_KEY`, `AI_MODEL`, `VISION_MODEL`) in `.env` for local development, or as Vercel environment variables for deployment. Vision requests prefer Google Gemini when `GEMINI_API_KEY` and `GOOGLE_MODEL` are also set, falling back to NVIDIA automatically.

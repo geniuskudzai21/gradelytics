@@ -189,9 +189,49 @@
         const redirectTo = window.location.origin + window.location.pathname;
         const { data, error } = await sb.auth.signInWithOAuth({
             provider: 'google',
-            options: { redirectTo }
+            options: {
+                redirectTo,
+                /* Always show the Google account chooser instead of silently
+                   re-using whichever Google account is already signed in. */
+                queryParams: { prompt: 'select_account' }
+            }
         });
         return { data, error };
+    }
+
+    /* Google / Supabase return OAuth failures as URL parameters
+       (#error=access_denied, ?error_code=redirect_uri_mismatch, ...). auth-js
+       does not raise an event for those, so without this the auth page would
+       just sit there doing nothing — the classic "Google sign-in is broken"
+       symptom. Show a readable message and strip the params afterwards. */
+    function surfaceOAuthError(errorEl) {
+        if (!errorEl) return;
+        let params = null;
+        try {
+            const query = window.location.search || '';
+            const hash = window.location.hash || '';
+            if (query.indexOf('error') === -1 && hash.indexOf('error') === -1) return;
+            params = new URLSearchParams(query.replace(/^\?/, '') + '&' + hash.replace(/^#/, ''));
+        } catch (e) { return; }
+        const code = (params && params.get('error')) || (params && params.get('error_code')) || '';
+        if (!code) return;
+        const desc = (params && params.get('error_description')) || '';
+        const all = (code + ' ' + desc).toLowerCase();
+        let message;
+        if (all.indexOf('access_denied') !== -1 || all.indexOf('cancelled') !== -1) {
+            message = 'Google sign-in was cancelled or declined. Try again.';
+        } else if (all.indexOf('redirect_uri') !== -1 || all.indexOf('mismatch') !== -1) {
+            message = 'Google sign-in is not configured: the redirect URL is not '
+                + 'whitelisted. Check GOOGLE_AUTH_SETUP.md (Supabase → Authentication → '
+                + 'URL Configuration and Google Cloud → Authorised redirect URIs).';
+        } else if (all.indexOf('provider') !== -1) {
+            message = 'Google sign-in is not configured on the Supabase project: enable '
+                + 'the Google provider and add its Client ID / Secret. See GOOGLE_AUTH_SETUP.md.';
+        } else {
+            message = 'Google sign-in failed: ' + (desc || code);
+        }
+        errorEl.textContent = message;
+        try { history.replaceState(null, document.title, window.location.pathname); } catch (e) { /* ignore */ }
     }
 
     /* Admin emails sign in with the admin password (ADMIN_PASSWORD) and are
@@ -752,6 +792,8 @@
         const pwToggle = document.getElementById('auth-password-toggle');
 
         if (!form) return;
+
+        surfaceOAuthError(errorEl);
 
         if (pwToggle) {
             const icon = pwToggle.querySelector('i');
