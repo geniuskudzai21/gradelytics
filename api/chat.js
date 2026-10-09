@@ -77,6 +77,7 @@ async function proxyToNvidia(body, isVision) {
         : process.env.NVIDIA_API_KEY;
     const payload = { ...body };
     if (modelEnv) payload.model = modelEnv;
+    if (!isVision) payload.chat_template_kwargs = { ...(payload.chat_template_kwargs || {}), enable_thinking: false };
 
     const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
         method: 'POST',
@@ -92,6 +93,43 @@ async function proxyToNvidia(body, isVision) {
     return { status: response.status, text: stripReasoning(text) };
 }
 
+const REASONING_TAGS = 'think|thinking|reasoning|analysis|scratchpad|reflection|thought';
+
+// Reasoning models (e.g. NVIDIA Nemotron) can leak their chain-of-thought —
+// including the system prompt verbatim — into the visible `content` field.
+// `enable_thinking: false` above is the source-level fix; this is the
+// defence-in-depth guard so no provider/model can surface deliberation or
+// <think> blocks to the user.
+function sanitizeModelText(text) {
+    if (typeof text !== 'string' || !text) return text;
+    let t = text;
+    t = t.replace(new RegExp(`<(${REASONING_TAGS})\\b[^>]*>[\\s\\S]*?<\\/\\1\\s*>`, 'gi'), '');
+    t = t.replace(new RegExp(`<(${REASONING_TAGS})\\b[^>]*>[\\s\\S]*$`, 'i'), '');
+    t = t.replace(new RegExp(`^[\\s\\S]*?<\\/(${REASONING_TAGS})\\s*>`, 'i'), '');
+    if (/here'?s (a|the) (thinking|thought) process|chain[- ]of[- ]thought|thinking process:/i.test(t)) {
+        t = extractFinalAnswer(t) || t;
+    }
+    t = t.split('\n').filter(line => !isLeakedInstruction(line)).join('\n');
+    t = t.replace(/^\s*(?:we need to|the user (?:is asking|wants|asked)|let me|i should|okay,? so|alright,? so|analyze user input|the prompt (?:includes|says))[^\n]*\n?/i, '');
+    return t.replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function isLeakedInstruction(line) {
+    return /(STRICTLY ENFORCED|DATA RULES|Never reveal or mention your underlying model|You are Gradelytics AI, an academic performance assistant|You ONLY help with academic performance analysis|NEVER output deliberation|invent, fabricate, guess, or assume|You CANNOT see anything else|Precomputed Averages)/i.test(line);
+}
+
+function extractFinalAnswer(text) {
+    const labelled = text.match(/(?:final answer|answer|result|output)\s*[:：]\s*([\s\S]+)$/i);
+    if (labelled && labelled[1].trim()) return labelled[1].trim();
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i];
+        if (/^[-*•\d]/.test(line)) continue;
+        if (line.length <= 300 && !/^[.\-–—:]+$/.test(line)) return line;
+    }
+    return '';
+}
+
 function stripReasoning(text) {
     try {
         const data = JSON.parse(text);
@@ -100,6 +138,7 @@ function stripReasoning(text) {
             delete msg.reasoning_content;
             delete msg.reasoning;
             delete msg.reasoning_text;
+            if (typeof msg.content === 'string') msg.content = sanitizeModelText(msg.content);
         }
         return JSON.stringify(data);
     } catch (e) {
@@ -167,7 +206,7 @@ async function proxyToGemini(payload, { apiKey, model }) {
     const parts = (data.candidates && data.candidates[0] && data.candidates[0].content)
         ? (data.candidates[0].content.parts || [])
         : [];
-    const content = parts.map(p => p.text || '').join('');
+    const content = sanitizeModelText(parts.map(p => p.text || '').join(''));
     return { status: 200, text: JSON.stringify({ choices: [{ message: { content } }] }) };
 }
 
