@@ -690,6 +690,7 @@ async function proxyToNvidia(payload, isVision) {
 }
 
 const REASONING_TAGS = 'think|thinking|reasoning|analysis|scratchpad|reflection|thought';
+const REASONING_PREAMBLE_RE = /here'?s (a|the) (thinking|thought) process|chain[- ]of[- ]thought|thinking process:|analyze user input|identify (the )?constraints|formulate (the )?response|determine the answer/i;
 
 // Reasoning models (e.g. NVIDIA Nemotron) can leak their chain-of-thought —
 // including the system prompt verbatim — into the visible `content` field.
@@ -702,9 +703,10 @@ function sanitizeModelText(text) {
     t = t.replace(new RegExp(`<(${REASONING_TAGS})\\b[^>]*>[\\s\\S]*?<\\/\\1\\s*>`, 'gi'), '');
     t = t.replace(new RegExp(`<(${REASONING_TAGS})\\b[^>]*>[\\s\\S]*$`, 'i'), '');
     t = t.replace(new RegExp(`^[\\s\\S]*?<\\/(${REASONING_TAGS})\\s*>`, 'i'), '');
-    if (/here'?s (a|the) (thinking|thought) process|chain[- ]of[- ]thought|thinking process:/i.test(t)) {
-        t = extractFinalAnswer(t) || t;
+    if (REASONING_PREAMBLE_RE.test(t)) {
+        t = extractFinalAnswer(t);
     }
+    if (REASONING_PREAMBLE_RE.test(t)) return '';
     t = t.split('\n').filter(line => !isLeakedInstruction(line)).join('\n');
     t = t.replace(/^\s*(?:we need to|the user (?:is asking|wants|asked)|let me|i should|okay,? so|alright,? so|analyze user input|the prompt (?:includes|says))[^\n]*\n?/i, '');
     return t.replace(/\n{3,}/g, '\n\n').trim();
@@ -715,12 +717,13 @@ function isLeakedInstruction(line) {
 }
 
 function extractFinalAnswer(text) {
-    const labelled = text.match(/(?:final answer|answer|result|output)\s*[:：]\s*([\s\S]+)$/i);
+    const labelled = text.match(/(?:final answer|answer|result)\s*[:：]\s*([\s\S]+)$/i);
     if (labelled && labelled[1].trim()) return labelled[1].trim();
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
     for (let i = lines.length - 1; i >= 0; i--) {
         const line = lines[i];
         if (/^[-*•\d]/.test(line)) continue;
+        if (REASONING_PREAMBLE_RE.test(line)) continue;
         if (line.length <= 300 && !/^[.\-–—:]+$/.test(line)) return line;
     }
     return '';
