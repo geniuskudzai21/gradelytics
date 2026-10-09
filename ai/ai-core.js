@@ -113,6 +113,7 @@ function aiError(response, raw, fallback) {
     err.status = response.status;
     err.isQuota = !!(payload && payload.error === 'ai_quota_exceeded');
     err.isAuth = !!(payload && payload.error === 'ai_unauthenticated');
+    err.quotaScope = (payload && payload.scope) || null;
     return err;
 }
 

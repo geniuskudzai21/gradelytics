@@ -4,7 +4,70 @@ function chatStorageKey() {
         : CHAT_STORAGE_KEY;
 }
 
+/* ── AI quota lock ──
+   Once the daily AI allowance is spent the server keeps rejecting prompts, so
+   the composer is disabled instead of letting the user fire requests that can
+   only fail. Day locks persist for the current UTC day; per-minute burst locks
+   clear themselves after 60s. */
+const CHAT_LOCK_KEY = 'ai_chat_lock';
+const CHAT_LOCK_DAY_MESSAGE = "You've reached today's AI message limit. It resets tomorrow.";
+let chatLocked = false;
+let chatUnlockTimer = null;
+
+function utcDayKey() {
+    return new Date().toISOString().slice(0, 10);
+}
+
+function chatLockStorageKey() {
+    return (window.GradelyticsDB && typeof GradelyticsDB.getCacheKey === 'function')
+        ? GradelyticsDB.getCacheKey(CHAT_LOCK_KEY)
+        : CHAT_LOCK_KEY;
+}
+
+function setChatLocked(locked, notice) {
+    chatLocked = locked;
+    const sendBtn = document.getElementById('chat-send-btn');
+    const input = document.getElementById('chat-input');
+    if (sendBtn) {
+        sendBtn.disabled = locked;
+        if (locked) {
+            sendBtn.setAttribute('title', notice || 'AI limit reached');
+            sendBtn.setAttribute('aria-disabled', 'true');
+        } else {
+            sendBtn.removeAttribute('title');
+            sendBtn.removeAttribute('aria-disabled');
+        }
+    }
+    if (input) {
+        input.placeholder = locked ? (notice || 'AI limit reached') : 'Ask Gradelytics AI...';
+    }
+}
+
+function restoreChatQuotaLock() {
+    let stored = null;
+    try { stored = localStorage.getItem(chatLockStorageKey()); } catch (e) { stored = null; }
+    if (!stored) return;
+    if (stored === utcDayKey()) {
+        setChatLocked(true, CHAT_LOCK_DAY_MESSAGE);
+    } else {
+        try { localStorage.removeItem(chatLockStorageKey()); } catch (e) { /* ignore */ }
+    }
+}
+
+function applyQuotaLock(err) {
+    if (!err || !err.isQuota) return;
+    if (err.quotaScope === 'day') {
+        try { localStorage.setItem(chatLockStorageKey(), utcDayKey()); } catch (e) { /* ignore */ }
+        setChatLocked(true, CHAT_LOCK_DAY_MESSAGE);
+        return;
+    }
+    if (chatUnlockTimer) clearTimeout(chatUnlockTimer);
+    setChatLocked(true, 'Too many requests — you can send again in a moment.');
+    chatUnlockTimer = setTimeout(function () { setChatLocked(false); }, 60000);
+}
+
 function sendChatMessage() {
+    if (chatLocked) return;
     if (typeof GradelyticsDB !== 'undefined' && !GradelyticsDB.requireAuth('Sign in to chat with Gradelytics AI.')) {
         return;
     }
@@ -25,10 +88,12 @@ function sendChatMessage() {
         }).catch(err => {
             hideChatTyping();
             addChatMessage('assistant', aiFailureMessage(err));
+            applyQuotaLock(err);
         });
     } catch (err) {
         hideChatTyping();
         addChatMessage('assistant', aiFailureMessage(err));
+        applyQuotaLock(err);
     }
 }
 
@@ -55,6 +120,7 @@ function renderChatMessages() {
         </div>
     `).join('');
     container.scrollTop = container.scrollHeight;
+    restoreChatQuotaLock();
 }
 
 function showChatTyping() {
@@ -111,6 +177,7 @@ function clearChat() {
 }
 
 function insertSuggestedPrompt(prompt) {
+    if (chatLocked) return;
     document.getElementById('chat-input').value = prompt;
     sendChatMessage();
 }

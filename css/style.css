@@ -1556,6 +1556,13 @@ section.active {
     background: var(--primary-hover);
 }
 
+.ai-chat-input-area #chat-send-btn:disabled {
+    background: var(--muted);
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
 /* ── Weak Area Items ── */
 .weak-item {
     display: flex;
@@ -2686,6 +2693,13 @@ section.active {
 
 #chat-send-btn:hover {
     background: var(--primary-hover);
+}
+
+#chat-send-btn:disabled {
+    background: var(--muted);
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
 }
 
 .clear-chat {
