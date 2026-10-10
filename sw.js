@@ -1,5 +1,5 @@
-const CACHE_NAME = 'gradelytics-v11';
-const RUNTIME_CACHE = 'gradelytics-runtime-v11';
+const CACHE_NAME = 'gradelytics-v12';
+const RUNTIME_CACHE = 'gradelytics-runtime-v12';
 const OFFLINE_URL = '/index.html';
 
 const CORE_ASSETS = [

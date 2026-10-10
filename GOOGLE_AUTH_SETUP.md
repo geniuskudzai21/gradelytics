@@ -29,11 +29,11 @@ Go to <https://console.cloud.google.com>.
 4. **Authorised JavaScript origins** — add exactly:
 
    ```
+   https://gradelytics.space
    https://genius-pa.vercel.app
    http://localhost:3000
    ```
 
-   Add `https://gradelytics.com` too if that domain is live.
    Do **not** add a trailing slash or path.
 
 5. **Authorised redirect URIs** — add exactly:
@@ -77,11 +77,13 @@ Open <https://supabase.com/dashboard> → your project (`gradelytics`).
 
 | Field | Value |
 |---|---|
-| **Site URL** | `https://genius-pa.vercel.app` |
-| **Redirect URLs** | `https://genius-pa.vercel.app/pages/auth.html` |
+| **Site URL** | `https://gradelytics.space` |
+| **Redirect URLs** | `https://gradelytics.space/pages/auth.html` |
+| | `https://gradelytics.space/**` |
+| | `https://genius-pa.vercel.app/pages/auth.html` |
 | | `https://genius-pa.vercel.app/**` |
+| | `http://localhost:3000` |
 | | `http://localhost:3000/pages/auth.html` |
-| | `https://gradelytics.com/pages/auth.html` (if that domain is live) |
 
 Click **Save** after adding them.
 
@@ -99,8 +101,8 @@ Notes:
 ## Part 3 — Verify
 
 1. Commit + push (the fix is in `js/supabase.js`; the service-worker cache was
-   bumped to `v7`, so returning users pick it up on the next visit).
-2. Open <https://genius-pa.vercel.app/pages/auth.html> (hard refresh:
+   bumped to `v12`, so returning users pick it up on the next visit).
+2. Open <https://gradelytics.space/pages/auth.html> (hard refresh:
    `Ctrl+Shift+R`).
 3. Click **Continue with Google**, pick an account, approve.
 4. You should land on `pages/dashboard.html` signed in.

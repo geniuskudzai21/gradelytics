@@ -1161,6 +1161,12 @@
     async function initApp() {
         const hasConfig = init();
         const isAuthPage = !!document.getElementById('auth-page');
+        // The landing page gets a Supabase bootstrap too, so a Google OAuth
+        // redirect that comes back to "/" (when the redirect URL is not
+        // whitelisted, GoTrue falls back to the site URL) is still picked up
+        // and forwarded to the dashboard instead of dead-ending with tokens
+        // stranded in the URL hash.
+        const isLandingPage = !!document.getElementById('landing-page');
         // Admin console guards itself with the stored admin password, so it
         // must never run the dashboard bootstrap or the auth redirects below.
         const isAdminPage = !!document.getElementById('admin-page');
@@ -1187,6 +1193,8 @@
             if (event === 'SIGNED_IN') {
                 if (isAuthPage) {
                     redirectAfterLogin();
+                } else if (isLandingPage) {
+                    window.location.href = 'pages/dashboard.html';
                 } else if (!isAdminPage) {
                     setAuthedUI(session);
                     startUsageTracking();
@@ -1215,6 +1223,8 @@
         if (session) {
             if (isAuthPage) {
                 redirectAfterLogin();
+            } else if (isLandingPage) {
+                window.location.href = 'pages/dashboard.html';
             } else if (!isAdminPage) {
                 setAuthedUI(session);
                 startUsageTracking();
