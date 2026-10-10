@@ -37,6 +37,12 @@ const AI_LIMITS = {
 
 const burstHits = new Map();
 
+// Per-IP failed admin-login attempts (11 tries in 15 minutes max) so the
+// master password can't be brute-forced online. Best-effort in-memory guard.
+const ADMIN_LOGIN_MAX = 10;
+const ADMIN_LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const adminLoginAttempts = new Map();
+
 const MIME = {
     '.html': 'text/html',
     '.css': 'text/css',
@@ -49,6 +55,12 @@ const MIME = {
     '.svg': 'image/svg+xml',
     '.ico': 'image/x-icon'
 };
+
+// Directories and root files that must never be served by the static handler.
+// Dotfiles (.env, .git, ...) are rejected by safeJoin automatically; segment
+// startsWith('.') covers .vercel, .gitignore, .nvmrc too (OWASP A05).
+const FORBIDDEN_DIRS = new Set(['api', 'node_modules', 'migrations', 'supabase']);
+const FORBIDDEN_FILES = new Set(['server.js', 'package.json', 'package-lock.json', 'vercel.json']);
 
 const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && req.url === '/api/chat') {
@@ -103,8 +115,9 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(geminiReply.status, { 'Content-Type': 'application/json' });
             res.end(geminiReply.text);
         } catch (err) {
+            console.error('[server] /api/chat failed:', err.message);
             res.writeHead(500, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: err.message }));
+            res.end(JSON.stringify({ error: 'Something went wrong processing your request. Please try again.' }));
         }
         return;
     }
@@ -112,6 +125,13 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && req.url === '/api/admin-login') {
         let body = '';
         for await (const chunk of req) body += chunk;
+
+        const ip = requestIp(req);
+        if (adminLoginRateLimited(ip)) {
+            console.warn('[server] admin-login rate-limited', ip);
+            res.writeHead(429, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ error: 'Too many attempts. Try again later.' }));
+        }
 
         const adminEmails = (process.env.ADMIN_EMAILS || '')
             .split(',')
@@ -135,9 +155,12 @@ const server = http.createServer(async (req, res) => {
         const email = String(parsed.email || '').trim().toLowerCase();
         const password = String(parsed.password || '');
         if (adminEmails.includes(email) && password && safeEqual(adminPassword, password)) {
+            adminLoginClear(ip);
             res.writeHead(200, { 'Content-Type': 'application/json' });
             return res.end(JSON.stringify({ role: 'admin' }));
         }
+        adminLoginRecord(ip);
+        console.warn('[server] admin-login failed attempt', { ip, email });
         res.writeHead(403, { 'Content-Type': 'application/json' });
         return res.end(JSON.stringify({ error: 'Not an admin account.' }));
     }
@@ -161,8 +184,22 @@ const server = http.createServer(async (req, res) => {
             return res.end(JSON.stringify({ isAdmin: false }));
         }
 
-        const claims = decodeTokenClaims(token);
-        const email = claims && claims.email ? String(claims.email).toLowerCase() : null;
+        /* Verify the token against Supabase Auth first — claims decoded from an
+           unverified JWT payload are forgeable and must not drive allowlist or
+           role decisions (OWASP A01/A02). */
+        const base = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
+        const anonKey = process.env.SUPABASE_ANON_KEY;
+        let user = null;
+        try {
+            if (base && anonKey && token) {
+                const authRes = await fetch(`${base}/auth/v1/user`, {
+                    headers: { apikey: anonKey, Authorization: `Bearer ${token}` }
+                });
+                if (authRes.ok) user = await authRes.json();
+            }
+        } catch (err) { /* Supabase unreachable → not an admin */ }
+
+        const email = user && user.email ? String(user.email).toLowerCase() : null;
         if (email && adminEmails.includes(email)) {
             res.writeHead(200, { 'Content-Type': 'application/json' });
             return res.end(JSON.stringify({ isAdmin: true, via: 'allowlist' }));
@@ -171,9 +208,8 @@ const server = http.createServer(async (req, res) => {
         /* Promoted admins carry their role in profiles, not in ADMIN_EMAILS. */
         let role = null;
         try {
-            const base = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
             const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-            const uid = claims && claims.sub;
+            const uid = user && user.id;
             if (base && key && uid) {
                 const rows = await fetchJson(`${base}/rest/v1/profiles?select=role&id=eq.${encodeURIComponent(uid)}&limit=1`, {
                     apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json'
@@ -194,26 +230,30 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && req.url === '/api/delete-account') {
         const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
         const supabaseUrl = process.env.SUPABASE_URL;
+        const anonKey = process.env.SUPABASE_ANON_KEY;
         const authHeader = req.headers.authorization || '';
         const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
-        if (!serviceRole || !supabaseUrl) {
+        if (!serviceRole || !supabaseUrl || !anonKey) {
             res.writeHead(500, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ error: 'SUPABASE_SERVICE_ROLE_KEY is not configured.' }));
+            return res.end(JSON.stringify({ error: 'Supabase is not configured.' }));
         }
         if (!token) {
             res.writeHead(401, { 'Content-Type': 'application/json' });
             return res.end(JSON.stringify({ error: 'Missing access token.' }));
         }
 
-        const userId = decodeTokenUserId(token);
+        /* Verify the token against Supabase Auth so the caller can only delete
+           their OWN account — the verified id is the target, never an unverified
+           claim from the client (forgeable) — OWASP A01/A02. */
+        const userId = await resolveUserId(supabaseUrl, anonKey, authHeader);
         if (!userId) {
             res.writeHead(401, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ error: 'Invalid access token.' }));
+            return res.end(JSON.stringify({ error: 'Invalid or expired access token.' }));
         }
 
         try {
-            const apiRes = await fetch(`${supabaseUrl.replace(/\/$/, '')}/auth/v1/admin/users/${userId}`, {
+            const apiRes = await fetch(`${supabaseUrl.replace(/\/$/, '')}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
                 method: 'DELETE',
                 headers: {
                     'apikey': serviceRole,
@@ -224,8 +264,9 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(apiRes.status, { 'Content-Type': 'application/json' });
             res.end(text);
         } catch (err) {
+            console.error('[server] delete-account failed:', err.message);
             res.writeHead(500, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: err.message }));
+            res.end(JSON.stringify({ error: 'Account deletion failed. Please try again.' }));
         }
         return;
     }
@@ -504,8 +545,9 @@ try {
                 users: rows
             }));
         } catch (err) {
+            console.error('[server] /api/admin-stats failed:', err.message);
             res.writeHead(500, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: err.message }));
+            res.end(JSON.stringify({ error: 'Failed to load admin statistics.' }));
         }
         return;
     }
@@ -683,15 +725,25 @@ try {
             res.writeHead(405, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Method not allowed.' }));
         } catch (err) {
+            console.error('[server] /api/admin-user failed:', err.message);
             res.writeHead(500, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: err.message }));
+            res.end(JSON.stringify({ error: 'Failed to update the user.' }));
         }
         return;
     }
 
-    let filePath = path.join(__dirname, req.url === '/' ? 'index.html' : req.url);
+    const filePath = safeJoin(__dirname, req.url || '/');
+    if (!filePath) {
+        res.writeHead(403, { 'Content-Type': 'text/html' });
+        return res.end('<h1>403 Forbidden</h1>');
+    }
+
     const ext = path.extname(filePath);
-    const contentType = MIME[ext] || 'application/octet-stream';
+    const contentType = MIME[ext];
+    if (!contentType) {
+        res.writeHead(404, { 'Content-Type': 'text/html' });
+        return res.end('<h1>404 Not Found</h1>');
+    }
 
     fs.readFile(filePath, (err, data) => {
         if (res.headersSent) return;
@@ -699,7 +751,13 @@ try {
             res.writeHead(404, { 'Content-Type': 'text/html' });
             return res.end('<h1>404 Not Found</h1>');
         }
-        res.writeHead(200, { 'Content-Type': contentType });
+        res.writeHead(200, {
+            'Content-Type': contentType,
+            'X-Content-Type-Options': 'nosniff',
+            'X-Frame-Options': 'DENY',
+            'Referrer-Policy': 'strict-origin-when-cross-origin',
+            'Content-Security-Policy': "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com https://unpkg.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self' https:; object-src 'none'"
+        });
         res.end(data);
     });
 });
@@ -715,6 +773,34 @@ async function fetchJson(url, headers) {
     const res = await fetch(url, { headers });
     if (!res.ok) throw new Error('Request failed: ' + res.status + ' ' + url);
     return res.json();
+}
+
+/* Resolve a request path to a file under `root`, blocking directory traversal
+   (.., encoded %2e%2e), dotfiles, and anything on the forbidden lists so the
+   static file server never leaks .env or server internals (OWASP A05). */
+function safeJoin(root, urlPath) {
+    let decoded;
+    try {
+        decoded = decodeURIComponent(String(urlPath).split('?')[0].split('#')[0]);
+    } catch (e) {
+        return null;
+    }
+    if (decoded === '' || decoded === '/') decoded = '/index.html';
+    const rel = decoded.replace(/^\/+/, '');
+    if (rel.indexOf('\0') !== -1 || rel.indexOf('\\') !== -1) return null;
+    const segments = rel.split('/');
+    const dirs = [];
+    for (const seg of segments) {
+        if (seg === '' || seg === '.') continue;
+        if (seg === '..') return null;
+        if (seg.startsWith('.') || FORBIDDEN_DIRS.has(seg)) return null;
+        dirs.push(seg);
+    }
+    const base = dirs[dirs.length - 1] || '';
+    if (FORBIDDEN_FILES.has(base)) return null;
+    const candidate = path.join(root, ...dirs);
+    if (candidate !== root && !candidate.startsWith(root + path.sep)) return null;
+    return candidate;
 }
 
 function parseDataURL(dataUrl) {
@@ -851,7 +937,8 @@ async function proxyToGemini(payload, { apiKey, model }) {
 
     if (!res.ok) {
         const errText = await res.text();
-        return { status: res.status, text: JSON.stringify({ error: `Gemini API error (${res.status}): ${errText}` }) };
+        console.error('[server] Gemini API error:', res.status, errText);
+        return { status: res.status, text: JSON.stringify({ error: `Gemini API error (${res.status}).` }) };
     }
 
     const data = await res.json();
@@ -889,9 +976,17 @@ async function enforceQuota(req, isVision) {
     const kind = isVision ? 'vision' : 'chat';
     const limits = AI_LIMITS[kind];
 
-    // No Supabase config means there is nothing to count against. Never block
-    // the app because quota bookkeeping is unavailable.
-    if (!serviceRole || !supabaseUrl || !anonKey) return null;
+    // No Supabase config means auth and quota bookkeeping are unavailable. Fail
+    // closed so the paid AI proxy can't be called anonymously/uncontrolled.
+    if (!serviceRole || !supabaseUrl || !anonKey) {
+        return {
+            status: 503,
+            body: {
+                error: 'ai_unavailable',
+                message: 'AI features need Supabase authentication to be configured.'
+            }
+        };
+    }
 
     const userId = await resolveUserId(supabaseUrl, anonKey, req.headers.authorization);
     if (!userId) {
@@ -997,6 +1092,34 @@ function safeEqual(a, b) {
     const bufB = Buffer.from(String(b));
     if (bufA.length !== bufB.length) return false;
     return crypto.timingSafeEqual(bufA, bufB);
+}
+
+function requestIp(req) {
+    const fwd = req.headers['x-forwarded-for'];
+    if (fwd) return String(fwd).split(',')[0].trim();
+    return req.socket.remoteAddress || 'unknown';
+}
+
+function adminLoginRateLimited(ip) {
+    const now = Date.now();
+    const list = (adminLoginAttempts.get(ip) || []).filter(t => now - t < ADMIN_LOGIN_WINDOW_MS);
+    if (list.length >= ADMIN_LOGIN_MAX) {
+        adminLoginAttempts.set(ip, list);
+        return true;
+    }
+    return false;
+}
+
+function adminLoginRecord(ip) {
+    const now = Date.now();
+    const list = (adminLoginAttempts.get(ip) || []).filter(t => now - t < ADMIN_LOGIN_WINDOW_MS);
+    list.push(now);
+    adminLoginAttempts.set(ip, list);
+    if (adminLoginAttempts.size > 5000) adminLoginAttempts.clear();
+}
+
+function adminLoginClear(ip) {
+    adminLoginAttempts.delete(ip);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -1138,21 +1261,4 @@ function dailyUsageSeries(list, days) {
         out.push({ day: key, seconds: map.get(key) || 0 });
     }
     return out;
-}
-
-function decodeTokenClaims(token) {
-    const payload = token.split('.')[1];
-    if (!payload) return null;
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-    try {
-        return JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
-    } catch (e) {
-        return null;
-    }
-}
-
-function decodeTokenUserId(token) {
-    const claims = decodeTokenClaims(token);
-    return claims ? claims.sub : null;
 }

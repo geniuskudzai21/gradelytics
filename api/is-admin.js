@@ -1,7 +1,11 @@
 /* Answers "should this signed-in account be sent to the admin console?" for the
    Google sign-in flow. Two sources of truth:
      1. ADMIN_EMAILS env allowlist (the owner)
-     2. profiles.role = 'admin' (promoted from the admin console)          */
+     2. profiles.role = 'admin' (promoted from the admin console)
+
+   The token is verified against Supabase Auth before any claim (email, sub) is
+   trusted — unverified JWT payloads are forgeable and must never drive admin
+   decisions (OWASP A01/A02). */
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -19,9 +23,13 @@ export default async function handler(req, res) {
         return res.status(200).json({ isAdmin: false });
     }
 
-    const claims = decodeTokenClaims(token);
-    const email = claims && claims.email ? String(claims.email).toLowerCase() : null;
-    const userId = (claims && claims.sub) || null;
+    const user = await verifyUser(token);
+    if (!user) {
+        return res.status(200).json({ isAdmin: false });
+    }
+
+    const email = user.email ? String(user.email).toLowerCase() : null;
+    const userId = user.id || null;
 
     if (email && adminEmails.includes(email)) {
         return res.status(200).json({ isAdmin: true, via: 'allowlist' });
@@ -33,6 +41,21 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({ isAdmin: false });
+}
+
+async function verifyUser(token) {
+    const url = process.env.SUPABASE_URL;
+    const anonKey = process.env.SUPABASE_ANON_KEY;
+    if (!url || !anonKey || !token) return null;
+    try {
+        const res = await fetch(`${url.replace(/\/$/, '')}/auth/v1/user`, {
+            headers: { apikey: anonKey, Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) return null;
+        return await res.json();
+    } catch (e) {
+        return null;
+    }
 }
 
 async function fetchRole(userId) {
@@ -47,18 +70,6 @@ async function fetchRole(userId) {
         if (!res.ok) return null;
         const rows = await res.json();
         return rows && rows.length ? rows[0].role : null;
-    } catch (e) {
-        return null;
-    }
-}
-
-function decodeTokenClaims(token) {
-    const payload = token.split('.')[1];
-    if (!payload) return null;
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-    try {
-        return JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
     } catch (e) {
         return null;
     }

@@ -59,7 +59,8 @@ export default async function handler(req, res) {
         res.writeHead(geminiReply.status, { 'Content-Type': 'application/json' });
         return res.end(geminiReply.text);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('[chat] /api/chat failed:', error.message);
+        res.status(500).json({ error: 'Something went wrong processing your request. Please try again.' });
     }
 }
 
@@ -195,7 +196,8 @@ async function proxyToGemini(payload, { apiKey, model }) {
 
     if (!res.ok) {
         const errText = await res.text();
-        return { status: res.status, text: JSON.stringify({ error: `Gemini API error (${res.status}): ${errText}` }) };
+        console.error('[chat] Gemini API error:', res.status, errText);
+        return { status: res.status, text: JSON.stringify({ error: `Gemini API error (${res.status}).` }) };
     }
 
     const data = await res.json();
@@ -215,9 +217,17 @@ async function enforceQuota(req, isVision) {
     const kind = isVision ? 'vision' : 'chat';
     const limits = AI_LIMITS[kind];
 
-    // No Supabase config means there is nothing to count against. Never block
-    // the app because quota bookkeeping is unavailable.
-    if (!serviceRole || !supabaseUrl || !anonKey) return null;
+    // No Supabase config means auth and quota bookkeeping are unavailable. Fail
+    // closed so the paid AI proxy can't be called anonymously/uncontrolled.
+    if (!serviceRole || !supabaseUrl || !anonKey) {
+        return {
+            status: 503,
+            body: {
+                error: 'ai_unavailable',
+                message: 'AI features need Supabase authentication to be configured.'
+            }
+        };
+    }
 
     const userId = await resolveUserId(supabaseUrl, anonKey, req.headers.authorization);
     if (!userId) {

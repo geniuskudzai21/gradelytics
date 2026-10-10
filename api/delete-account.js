@@ -5,8 +5,9 @@ export default async function handler(req, res) {
 
     const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const supabaseUrl = process.env.SUPABASE_URL;
-    if (!serviceRole || !supabaseUrl) {
-        return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY is not configured.' });
+    const anonKey = process.env.SUPABASE_ANON_KEY;
+    if (!serviceRole || !supabaseUrl || !anonKey) {
+        return res.status(500).json({ error: 'Supabase is not configured.' });
     }
 
     const authHeader = req.headers.authorization || '';
@@ -15,13 +16,17 @@ export default async function handler(req, res) {
         return res.status(401).json({ error: 'Missing access token.' });
     }
 
-    const userId = decodeUserId(token);
+    // Verify the token against Supabase Auth before trusting it. The caller can
+    // only ever delete their OWN account: the verified user id returned by
+    // GoTrue is the target, never a value decoded from an unverified client
+    // claim (forgeable) — see OWASP A01/A02.
+    const userId = await verifyUserId(supabaseUrl, anonKey, token);
     if (!userId) {
-        return res.status(401).json({ error: 'Invalid access token.' });
+        return res.status(401).json({ error: 'Invalid or expired access token.' });
     }
 
     try {
-        const apiRes = await fetch(`${supabaseUrl.replace(/\/$/, '')}/auth/v1/admin/users/${userId}`, {
+        const apiRes = await fetch(`${supabaseUrl.replace(/\/$/, '')}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
             method: 'DELETE',
             headers: {
                 'apikey': serviceRole,
@@ -32,18 +37,19 @@ export default async function handler(req, res) {
         res.writeHead(apiRes.status, { 'Content-Type': 'application/json' });
         res.end(text);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('[delete-account] deletion failed:', error.message);
+        res.status(500).json({ error: 'Account deletion failed. Please try again.' });
     }
 }
 
-function decodeUserId(token) {
-    const payload = token.split('.')[1];
-    if (!payload) return null;
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+async function verifyUserId(base, anonKey, token) {
     try {
-        const claims = JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
-        return claims.sub || null;
+        const res = await fetch(`${base.replace(/\/$/, '')}/auth/v1/user`, {
+            headers: { apikey: anonKey, Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return (data && data.id) || null;
     } catch (e) {
         return null;
     }

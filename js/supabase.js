@@ -148,10 +148,6 @@
         return role;
     }
 
-    async function isAdmin() {
-        return (await getRole()) === 'admin';
-    }
-
     /* Access token for server calls that authorise the caller themselves
        (the admin console uses this when the signed-in user is a promoted
        admin, instead of the master ADMIN_PASSWORD). */
@@ -551,7 +547,6 @@
         if (typeof displayModules === 'function') displayModules();
         if (typeof updateStatistics === 'function') updateStatistics();
         if (typeof renderChatMessages === 'function') renderChatMessages();
-        if (typeof prefillWhatIf === 'function') prefillWhatIf();
     }
 
     function renderDisplayName() {
@@ -1049,36 +1044,6 @@
         }
     }
 
-    /* ── Load own usage sessions ── */
-    async function loadUsageSessions() {
-        const userId = currentUserId || await getUserId();
-        if (!userId || !sb) {
-            return { totalSeconds: 0, todaySeconds: 0, sessions: [] };
-        }
-        try {
-            const { data, error } = await sb
-                .from('usage_sessions')
-                .select('started_at, duration_seconds')
-                .eq('user_id', userId)
-                .order('started_at', { ascending: true });
-            if (error || !data) return { totalSeconds: 0, todaySeconds: 0, sessions: [] };
-            const todayStart = new Date();
-            todayStart.setHours(0, 0, 0, 0);
-            const todayTs = todayStart.getTime();
-            let totalSeconds = 0;
-            let todaySeconds = 0;
-            data.forEach(function (s) {
-                const d = Number(s.duration_seconds) || 0;
-                totalSeconds += d;
-                const t = s.started_at ? new Date(s.started_at).getTime() : NaN;
-                if (!isNaN(t) && t >= todayTs) todaySeconds += d;
-            });
-            return { totalSeconds: totalSeconds, todaySeconds: todaySeconds, sessions: data };
-        } catch (err) {
-            return { totalSeconds: 0, todaySeconds: 0, sessions: [] };
-        }
-    }
-
     /* ── Usage tracking (time on app) ──
        While a signed-in user keeps the dashboard visible, accumulate active
        seconds and flush them to usage_sessions in ~60s chunks (and when the
@@ -1278,9 +1243,7 @@
         saveAchievementUnlock: saveAchievementUnlock,
         resetAchievements: resetAchievements,
         getModules: getInMemoryModules,
-        loadUsageSessions: loadUsageSessions,
         getRole: getRole,
-        isAdmin: isAdmin,
         getAccessToken: getAccessToken
     };
 })();

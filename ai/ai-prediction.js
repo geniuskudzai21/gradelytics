@@ -1,19 +1,3 @@
-function predictNextSemester() {
-    const modules = (typeof GradelyticsDB !== 'undefined') ? GradelyticsDB.getModules() : [];
-    const resultEl = document.getElementById('prediction-result');
-    if (modules.length === 0) {
-        resultEl.textContent = 'No academic data found. Add modules in the Input Details section first.';
-        return;
-    }
-
-    const avg = (modules.reduce((s, m) => s + m.mark, 0) / modules.length).toFixed(1);
-    const predicted = computeNextPrediction(modules);
-    const low = Math.max(0, Math.round(predicted - 1.5));
-    const high = Math.min(100, Math.round(predicted + 1.5));
-
-    resultEl.innerHTML = renderPrediction(`${low}-${high}`, avg);
-}
-
 function renderPrediction(text, currentAvg) {
     let range = String(text || '').trim();
     const labelMatch = /PREDICTED_RANGE\s*:\s*([^\n]+)/i.exec(range);
@@ -28,10 +12,3 @@ function renderPrediction(text, currentAvg) {
     </div>`;
     return html;
 }
-
-document.addEventListener('DOMContentLoaded', function () {
-    const predictBtn = document.getElementById('train-predict-btn');
-    if (predictBtn) {
-        predictBtn.addEventListener('click', predictNextSemester);
-    }
-});
