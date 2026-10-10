@@ -1,6 +1,21 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
+    <script>
+        /* Google/OAuth can land back on the home page when the page you started
+           from is not in Supabase's redirect allow-list (GoTrue falls back to
+           the Site URL). Forward the auth payload straight to the sign-in page,
+           which processes the session and sends the user on to their dashboard —
+           so the landing page never shows first. */
+        (function () {
+            var hash = window.location.hash || '';
+            var query = window.location.search || '';
+            if (hash.indexOf('access_token=') !== -1 || hash.indexOf('error') !== -1
+                || query.indexOf('error') !== -1 || query.indexOf('code=') !== -1) {
+                window.location.replace('pages/auth.html' + query + hash);
+            }
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Gradelytics — Track, analyze, and predict your academic performance with AI-powered insights. Know exactly where you stand.">
@@ -16,7 +31,7 @@
     <link rel="apple-touch-icon" href="/images/icons/icon-192.png">
     <link rel="stylesheet" href="css/pwa-install.css">
 </head>
-<body id="landing-page">
+<body>
 
     <!-- ── Header ── -->
     <header class="site-header">
@@ -417,9 +432,6 @@
             });
         }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabase-config.js" defer></script>
-    <script src="js/supabase.js" defer></script>
     <script src="js/pwa-install.js"></script>
 </body>
 </html>

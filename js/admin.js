@@ -876,6 +876,26 @@
             return;
         }
 
+        /* Verify the credential server-side BEFORE wiring the console. The
+           admin markup is hidden (html.admin-gate) until this passes, so an
+           ordinary signed-in user — who also has a valid Supabase access token —
+           or a guest with a stale one never sees the console; they get bounced
+           to their dashboard instead. */
+        let verified = false;
+        try {
+            const res = await fetch('/api/admin-check', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + adminPassword }
+            });
+            verified = res.ok;
+        } catch (e) { verified = false; }
+        if (!verified) {
+            try { sessionStorage.removeItem('gradelytics_admin_password'); } catch (e) { /* ignore */ }
+            window.location.href = 'dashboard.html';
+            return;
+        }
+        document.documentElement.classList.remove('admin-gate');
+
         const sidebarLinks = document.querySelectorAll('.sidebar-link');
         sidebarLinks.forEach(link => {
             link.addEventListener('click', function (e) {

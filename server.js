@@ -142,6 +142,12 @@ const server = http.createServer(async (req, res) => {
         return res.end(JSON.stringify({ error: 'Not an admin account.' }));
     }
 
+    if (req.method === 'POST' && req.url === '/api/admin-check') {
+        const auth = await authorizeAdmin(req);
+        res.writeHead(auth.ok ? 200 : (auth.status || 403), { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify(auth.ok ? { ok: true } : { error: auth.error }));
+    }
+
     if (req.method === 'POST' && req.url === '/api/is-admin') {
         const adminEmails = (process.env.ADMIN_EMAILS || '')
             .split(',')
