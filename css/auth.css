@@ -301,3 +301,44 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
+
+/* ── Auth callback / auto-redirect overlay ──
+   While a Google callback is being processed or a session already exists, the
+   sign-in card is hidden so it never flashes before the user is bounced to
+   their dashboard (see the head script in pages/auth.html). */
+
+[data-auth-busy="1"] .auth-page {
+    display: none;
+}
+
+.auth-pending {
+    display: none;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-5);
+}
+
+[data-auth-busy="1"] .auth-pending {
+    display: flex;
+}
+
+.auth-pending-card {
+    text-align: center;
+    color: var(--text-muted, #8892a4);
+    font-family: var(--font-body);
+}
+
+.auth-spinner {
+    width: 42px;
+    height: 42px;
+    margin: 0 auto var(--sp-3);
+    border-radius: 50%;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
+    animation: auth-spin 0.8s linear infinite;
+}
+
+@keyframes auth-spin {
+    to { transform: rotate(360deg); }
+}

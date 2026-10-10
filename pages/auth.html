@@ -10,6 +10,32 @@
             document.documentElement.setAttribute('data-theme', localStorage.getItem('gradelytics-theme') || 'dark');
         } catch (e) { /* ignore */ }
     </script>
+    <script>
+        /* While a Google callback is being processed (tokens already in the URL)
+           or a session already exists, hide the sign-in card immediately so the
+           auth page never flashes before supabase-js bounces to the dashboard. */
+        (function () {
+            var hash = window.location.hash || '';
+            var query = window.location.search || '';
+            var hasCallback = hash.indexOf('access_token=') !== -1
+                || hash.indexOf('error') !== -1
+                || query.indexOf('code=') !== -1
+                || query.indexOf('error') !== -1;
+            var hasSession = false;
+            try {
+                for (var i = 0; i < localStorage.length; i++) {
+                    var key = localStorage.key(i);
+                    if (key && /^sb-.*-auth-token$/.test(key)) {
+                        hasSession = true;
+                        break;
+                    }
+                }
+            } catch (e) { /* ignore */ }
+            if (hasCallback || hasSession) {
+                document.documentElement.setAttribute('data-auth-busy', '1');
+            }
+        })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -72,6 +98,13 @@
             </form>
 
             <p class="auth-back-home"><a href="../index.html"><i class='bx bx-left-arrow-alt'></i> Back to home</a></p>
+        </div>
+    </div>
+
+    <div class="auth-pending" id="auth-pending" aria-live="polite">
+        <div class="auth-pending-card">
+            <div class="auth-spinner" aria-hidden="true"></div>
+            <p>Signing you in&hellip;</p>
         </div>
     </div>
 

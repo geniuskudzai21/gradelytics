@@ -231,6 +231,7 @@
             message = 'Google sign-in failed: ' + (desc || code);
         }
         errorEl.textContent = message;
+        authBusy(false);
         try { history.replaceState(null, document.title, window.location.pathname); } catch (e) { /* ignore */ }
     }
 
@@ -741,6 +742,21 @@
 
     /* ── Auth page UI (pages/auth.html) ── */
 
+    /* Toggle the data-auth-busy attribute that pages/auth.html's head script
+       uses to hide the sign-in card while a callback is being processed. Any
+       path that ends without navigating (OAuth error, admin-password prompt,
+       missing config, failed session restore) must call authBusy(false) so the
+       card is revealed again. */
+    function authBusy(busy) {
+        try {
+            if (busy) {
+                document.documentElement.setAttribute('data-auth-busy', '1');
+            } else {
+                document.documentElement.removeAttribute('data-auth-busy');
+            }
+        } catch (e) { /* ignore */ }
+    }
+
     function redirectAfterLogin() {
         if (authRedirectHandled) return;
         authRedirectHandled = true;
@@ -782,6 +798,7 @@
        only have to type the admin password to open the admin console. */
     function promptAdminPassword(email) {
         adminPromptActive = true;
+        authBusy(false);
         const emailInput = document.getElementById('auth-email');
         const passwordInput = document.getElementById('auth-password');
         const errorEl = document.getElementById('auth-error');
@@ -1186,7 +1203,9 @@
         }
 
         if (!hasConfig) {
-            if (!isAuthPage && !isAdminPage) {
+            if (isAuthPage) {
+                authBusy(false);
+            } else if (!isAdminPage) {
                 fallbackToLocal();
                 renderDisplayName();
                 setGuestUI();
@@ -1233,7 +1252,11 @@
                 await loadAllFromDB();
                 revealApp();
             }
-        } else if (!isAuthPage && !isAdminPage) {
+        } else if (isAuthPage) {
+            // Callback present but no usable session (e.g. failed exchange):
+            // let the sign-in card show instead of leaving the spinner stuck.
+            authBusy(false);
+        } else if (!isAdminPage) {
             // No session: let guests view the dashboard with local-only data.
             // Sign-in is only enforced when they try to use an AI feature.
             fallbackToLocal();
