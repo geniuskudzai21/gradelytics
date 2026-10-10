@@ -49,7 +49,6 @@
     let configured = false;
     let currentDisplayName = GUEST_DISPLAY_NAME;
     let currentUserId = null;
-    let adminPromptActive = false;
     let authRedirectHandled = false;
     /* Bumped on every local data write (module saves, achievement resets).
        An in-flight loadAllFromDB() that started reading before a write can
@@ -595,6 +594,13 @@
         const signinBtn = document.getElementById('sidebar-signin-btn');
         if (logoutBtn) logoutBtn.style.display = '';
         if (signinBtn) signinBtn.style.display = 'none';
+
+        const adminLink = document.getElementById('admin-console-link');
+        if (adminLink) {
+            getRole().then(function (role) {
+                adminLink.style.display = role === 'admin' ? '' : 'none';
+            });
+        }
     }
 
     /* Guests keep full read/write access to the dashboard (local-only data);
@@ -602,8 +608,10 @@
     function setGuestUI() {
         const logoutBtn = document.getElementById('logout-btn');
         const signinBtn = document.getElementById('sidebar-signin-btn');
+        const adminLink = document.getElementById('admin-console-link');
         if (logoutBtn) logoutBtn.style.display = 'none';
         if (signinBtn) signinBtn.style.display = '';
+        if (adminLink) adminLink.style.display = 'none';
     }
 
     function getDisplayName() {
@@ -767,46 +775,10 @@
             return;
         }
 
-        // Check whether the signed-in account is an admin email so Google
-        // sign-in can still reach the admin console (gated by ADMIN_PASSWORD).
-        getSession().then(function (res) {
-            const session = res.session;
-            if (session && session.access_token) {
-                return fetch('/api/is-admin', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + session.access_token
-                    }
-                })
-                    .then(r => r.json().catch(() => null))
-                    .then(data => {
-                        if (data && data.isAdmin) {
-                            promptAdminPassword(session.user && session.user.email);
-                            return;
-                        }
-                        window.location.href = 'dashboard.html';
-                    });
-            }
-            window.location.href = 'dashboard.html';
-        }).catch(function () {
-            window.location.href = 'dashboard.html';
-        });
-    }
-
-    /* Pre-fill the auth form for an admin who signed in via Google so they
-       only have to type the admin password to open the admin console. */
-    function promptAdminPassword(email) {
-        adminPromptActive = true;
-        authBusy(false);
-        const emailInput = document.getElementById('auth-email');
-        const passwordInput = document.getElementById('auth-password');
-        const errorEl = document.getElementById('auth-error');
-        if (emailInput) emailInput.value = email || '';
-        if (errorEl) {
-            errorEl.textContent = 'Admin account detected. Enter the admin password to open the admin console.';
-        }
-        if (passwordInput) passwordInput.focus();
+        // Google / email sign-in always lands the user on their dashboard. The
+        // admin console is reached from the dashboard's Admin Console link or
+        // /pages/admin.html directly — never by stopping at the sign-in page.
+        window.location.href = 'dashboard.html';
     }
 
     function wireAuthPage() {
@@ -892,7 +864,7 @@
             submitBtn.textContent = mode === 'login' ? 'Signing in...' : 'Creating account...';
             try {
                 const result = mode === 'login'
-                    ? await loginWithAdminCheck(email, password, adminPromptActive ? { adminOnly: true } : undefined)
+                    ? await loginWithAdminCheck(email, password)
                     : await signUp(email, password);
 
                 if (result.redirecting) return;
@@ -1253,9 +1225,19 @@
                 revealApp();
             }
         } else if (isAuthPage) {
-            // Callback present but no usable session (e.g. failed exchange):
-            // let the sign-in card show instead of leaving the spinner stuck.
-            authBusy(false);
+            // A Google callback may still be exchanging tokens when the page
+            // first loads: give auth-js a moment and re-check before falling
+            // back to the sign-in card, so a valid session never gets stranded.
+            let retried = null;
+            for (let i = 0; i < 4 && !retried; i++) {
+                await new Promise(r => setTimeout(r, 400));
+                retried = (await getSession()).session;
+            }
+            if (retried) {
+                redirectAfterLogin();
+            } else {
+                authBusy(false);
+            }
         } else if (!isAdminPage) {
             // No session: let guests view the dashboard with local-only data.
             // Sign-in is only enforced when they try to use an AI feature.
