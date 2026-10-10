@@ -216,7 +216,8 @@ function showToast(message, type) {
 
     const toast = document.createElement('div');
     toast.className = `toast toast--${type}`;
-    toast.innerHTML = `<i class='bx ${type === 'success' ? 'bx-check-circle' : 'bx-error'}'></i> ${message}`;
+    const toastIcon = type === 'success' ? 'bx-check-circle' : (type === 'info' ? 'bx-info-circle' : 'bx-error');
+    toast.innerHTML = `<i class='bx ${toastIcon}'></i> ${message}`;
     document.body.appendChild(toast);
 
     requestAnimationFrame(() => toast.classList.add('toast--visible'));

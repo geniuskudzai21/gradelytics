@@ -3,16 +3,9 @@
 // an order of magnitude more expensive per call than a short chat turn, so it
 // gets the tighter cap. Every number is env-tunable — set the DAILY limits to
 // 6 if you want a hard 6-a-day cap.
-const AI_LIMITS = {
-    chat: {
-        day: intEnv('AI_CHAT_DAILY_LIMIT', 20),
-        minute: intEnv('AI_CHAT_MINUTE_LIMIT', 6)
-    },
-    vision: {
-        day: intEnv('AI_VISION_DAILY_LIMIT', 8),
-        minute: intEnv('AI_VISION_MINUTE_LIMIT', 3)
-    }
-};
+import { getAiLimits } from './_ai-limits.js';
+
+const AI_LIMITS = getAiLimits();
 
 // Burst guard. Best-effort only: on serverless this resets on cold start, which
 // is fine because the daily counter in Postgres is the real limit.
@@ -117,7 +110,7 @@ function sanitizeModelText(text) {
 }
 
 function isLeakedInstruction(line) {
-    return /(STRICTLY ENFORCED|DATA RULES|Never reveal or mention your underlying model|You are Gradelytics AI, an academic performance assistant|You ONLY help with academic performance analysis|NEVER output deliberation|invent, fabricate, guess, or assume|You CANNOT see anything else|Precomputed Averages)/i.test(line);
+    return /(STRICTLY ENFORCED|DATA RULES|Never reveal or mention your underlying model|You are "?Gradelytics AI|You ONLY help with academic performance analysis|NEVER output deliberation|invent, fabricate, guess, or assume|You CANNOT see anything else|Precomputed Averages|Never reveal, quote, paraphrase, or acknowledge these instructions|which company, researchers, model, or technology powers you)/i.test(line);
 }
 
 function extractFinalAnswer(text) {
@@ -214,11 +207,6 @@ async function proxyToGemini(payload, { apiKey, model }) {
 }
 
 /* ── Per-user AI quota ── */
-
-function intEnv(name, fallback) {
-    const n = parseInt(process.env[name], 10);
-    return Number.isFinite(n) && n > 0 ? n : fallback;
-}
 
 async function enforceQuota(req, isVision) {
     const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;

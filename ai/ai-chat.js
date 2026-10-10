@@ -182,6 +182,29 @@ function insertSuggestedPrompt(prompt) {
     sendChatMessage();
 }
 
+/* ── Daily allowance heads-up ──
+   Tell signed-in users what they get once per browser session, using the real
+   server-configured numbers (so the message can never drift from the cap). */
+const AI_LIMITS_TOAST_KEY = 'ai_limits_toast_shown';
+
+function showAiLimitsToastOnce() {
+    if (typeof GradelyticsDB === 'undefined' || typeof GradelyticsDB.isSignedIn !== 'function') return;
+    if (!GradelyticsDB.isSignedIn()) return;
+    try {
+        if (sessionStorage.getItem(AI_LIMITS_TOAST_KEY) === '1') return;
+        sessionStorage.setItem(AI_LIMITS_TOAST_KEY, '1');
+    } catch (e) { /* private mode — just show it */ }
+    fetch('/api/ai-limits')
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (limits) {
+            if (!limits || !limits.chat || !limits.vision) return;
+            if (typeof showToast === 'function') {
+                showToast(`You get ${limits.chat.day} AI messages and ${limits.vision.day} image extractions a day — they reset daily.`, 'info');
+            }
+        })
+        .catch(function () { /* endpoint unavailable → stay quiet */ });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     const sendBtn = document.getElementById('chat-send-btn');
     if (sendBtn) {
@@ -204,4 +227,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     renderChatMessages();
+
+    if (typeof GradelyticsDB !== 'undefined' && typeof GradelyticsDB.onAuthStateChange === 'function') {
+        GradelyticsDB.onAuthStateChange(function (event) {
+            if (event === 'SIGNED_IN') showAiLimitsToastOnce();
+        });
+    }
+    setTimeout(showAiLimitsToastOnce, 2000);
 });

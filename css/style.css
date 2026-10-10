@@ -2412,6 +2412,11 @@ section.active {
     color: #fca5a5;
 }
 
+.toast--info {
+    background: #0c4a6e;
+    color: #7dd3fc;
+}
+
 .toast i {
     font-size: 18px;
 }

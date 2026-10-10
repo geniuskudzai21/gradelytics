@@ -556,7 +556,19 @@
 
     function renderDisplayName() {
         const el = document.getElementById('sidebar-username');
-        if (el) el.innerHTML = `<i class='bx bx-user-circle'></i> ${currentDisplayName}`;
+        if (el) {
+            el.title = currentDisplayName;
+            el.innerHTML = `<i class='bx bx-user-circle'></i> ${currentDisplayName}`;
+            // If the full name doesn't fit the sidebar footer, drop the surname
+            // and show only the first name.
+            if (currentDisplayName.indexOf(' ') !== -1) {
+                requestAnimationFrame(function () {
+                    if (el.clientWidth > 0 && el.scrollWidth > el.clientWidth) {
+                        el.innerHTML = `<i class='bx bx-user-circle'></i> ${currentDisplayName.split(/\s+/)[0]}`;
+                    }
+                });
+            }
+        }
         const settingsName = document.getElementById('settings-display-name');
         if (settingsName) settingsName.value = currentDisplayName;
         const greeting = document.getElementById('welcome-greeting');
