@@ -9,7 +9,7 @@ function intEnv(name, fallback) {
 export function getAiLimits() {
     return {
         chat: {
-            day: intEnv('AI_CHAT_DAILY_LIMIT', 20),
+            day: intEnv('AI_CHAT_DAILY_LIMIT', 10),
             minute: intEnv('AI_CHAT_MINUTE_LIMIT', 6)
         },
         vision: {

@@ -1,8 +1,8 @@
 // Free model tiers have a rate limit rather than a bill, so the goal is to
 // stop one account from consuming the whole provider quota. Vision is roughly
 // an order of magnitude more expensive per call than a short chat turn, so it
-// gets the tighter cap. Every number is env-tunable — set the DAILY limits to
-// 6 if you want a hard 6-a-day cap.
+// gets the tighter cap. Every number is env-tunable — chat defaults to 10
+// messages a day; override AI_CHAT_DAILY_LIMIT to change it.
 import { getAiLimits } from './_ai-limits.js';
 
 const AI_LIMITS = getAiLimits();

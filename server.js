@@ -22,11 +22,11 @@ const ACTIVE_WINDOW_MS = 90 * 1000;
 // Free model tiers have a rate limit rather than a bill, so the goal is to
 // stop one account from consuming the whole provider quota. Vision is roughly
 // an order of magnitude more expensive per call than a short chat turn, so it
-// gets the tighter cap. Every number is env-tunable — set the DAILY limits to
-// 6 if you want a hard 6-a-day cap.
+// gets the tighter cap. Every number is env-tunable — chat defaults to 10
+// messages a day; override AI_CHAT_DAILY_LIMIT to change it.
 const AI_LIMITS = {
     chat: {
-        day: intEnv('AI_CHAT_DAILY_LIMIT', 20),
+        day: intEnv('AI_CHAT_DAILY_LIMIT', 10),
         minute: intEnv('AI_CHAT_MINUTE_LIMIT', 6)
     },
     vision: {
@@ -265,17 +265,14 @@ try {
 
             // ── AI quota usage today ──
             const aiByUser = new Map();
-            let chatCallsToday = 0;
-            let visionCallsToday = 0;
             (aiUsage || []).forEach(r => {
-                const c = Number(r.chat_count) || 0;
-                const v = Number(r.vision_count) || 0;
-                chatCallsToday += c;
-                visionCallsToday += v;
-                aiByUser.set(r.user_id, { chat: c, vision: v });
+                aiByUser.set(r.user_id, {
+                    chat: Number(r.chat_count) || 0,
+                    vision: Number(r.vision_count) || 0
+                });
             });
             const aiLimits = {
-                chat: intEnv('AI_CHAT_DAILY_LIMIT', 20),
+                chat: intEnv('AI_CHAT_DAILY_LIMIT', 10),
                 vision: intEnv('AI_VISION_DAILY_LIMIT', 8)
             };
 
@@ -283,13 +280,12 @@ try {
             const chatCount = countBy(chat, 'user_id');
             const unlockCount = countBy(unlocks, 'user_id');
 
-            // Time on app: total and per-user active seconds.
+            // Time on app: per-user active seconds (all accounts, for the row
+            // detail). The platform total is computed below from real users only.
             const usageByUser = new Map();
-            let totalTimeSeconds = 0;
             (usage || []).forEach(u => {
                 const s = Number(u.duration_seconds) || 0;
                 if (s <= 0) return;
-                totalTimeSeconds += s;
                 usageByUser.set(u.user_id, (usageByUser.get(u.user_id) || 0) + s);
             });
 
@@ -338,29 +334,49 @@ try {
             });
 
             // Admins (the owner plus promoted admins) are not students, so keep
-            // them out of the user-facing metrics — totals, active counts and
-            // signup trends describe real users only. They stay in the list.
+            // them out of every aggregate — user totals, active counts, signup
+            // trends and all content metrics describe real users only. Admins
+            // still appear in the users list itself.
+            const adminIds = new Set(rows.filter(r => r.role === 'admin').map(r => r.id));
             const memberRows = rows.filter(r => r.role !== 'admin');
-            const memberIds = new Set(memberRows.map(r => r.id));
+
+            // Content rows belonging to real users only.
+            const memberModules = modules.filter(m => !adminIds.has(m.user_id));
+            const memberChat = chat.filter(c => !adminIds.has(c.user_id));
+            const memberUnlocks = unlocks.filter(u => !adminIds.has(u.user_id));
+            const memberUsage = (usage || []).filter(u => !adminIds.has(u.user_id));
+
+            // AI totals exclude admin activity; per-user data stays for the rows.
+            const memberAi = new Map();
+            let chatCallsToday = 0;
+            let visionCallsToday = 0;
+            aiByUser.forEach((v, uid) => {
+                if (adminIds.has(uid)) return;
+                memberAi.set(uid, v);
+                chatCallsToday += v.chat;
+                visionCallsToday += v.vision;
+            });
+
+            const totalTimeSeconds = memberUsage.reduce((s, u) => s + (Number(u.duration_seconds) || 0), 0);
 
             const activeCount = memberRows.filter(r => r.active).length;
             const engagedCount = memberRows.filter(r => r.engaged).length;
 
             // ── Performance & engagement ──
-            const marks = modules.filter(m => m.mark != null && Number(m.mark) >= 0).map(m => Number(m.mark));
+            const marks = memberModules.filter(m => m.mark != null && Number(m.mark) >= 0).map(m => Number(m.mark));
             const overallAverage = marks.length
                 ? +(marks.reduce((s, x) => s + x, 0) / marks.length).toFixed(1)
                 : null;
 
             const gradeDistribution = {};
-            modules.forEach(m => {
+            memberModules.forEach(m => {
                 if (m.grade) gradeDistribution[String(m.grade)] = (gradeDistribution[String(m.grade)] || 0) + 1;
             });
             const gradeEntries = Object.entries(gradeDistribution).sort((a, b) => b[1] - a[1]);
             const mostCommonGrade = gradeEntries.length ? gradeEntries[0][0] : null;
 
             const moduleCounts = {};
-            modules.forEach(m => {
+            memberModules.forEach(m => {
                 const name = String(m.name || '').trim();
                 if (name) moduleCounts[name] = (moduleCounts[name] || 0) + 1;
             });
@@ -370,14 +386,14 @@ try {
                 .map(([name, count]) => ({ name, count }));
 
             const achievementBreakdown = {};
-            unlocks.forEach(u => {
+            memberUnlocks.forEach(u => {
                 const key = u.unlock_key || 'other';
                 achievementBreakdown[key] = (achievementBreakdown[key] || 0) + 1;
             });
 
             // ── Average mark per academic year ──
             const byYear = {};
-            modules.forEach(m => {
+            memberModules.forEach(m => {
                 if (m.year != null && m.mark != null && !isNaN(Number(m.mark))) {
                     const y = String(m.year).trim();
                     if (y) (byYear[y] = byYear[y] || []).push(Number(m.mark));
@@ -394,9 +410,9 @@ try {
             // ── Time series (90 days) for signups, modules added, messages and usage ──
             const series = {
                 signups: dailySeries(memberRows, 'created_at', 90),
-                modules: dailySeries(modules, 'created_at', 90),
-                messages: dailySeries(chat, 'created_at', 90),
-                usage: dailyUsageSeries(usage || [], 90)
+                modules: dailySeries(memberModules, 'created_at', 90),
+                messages: dailySeries(memberChat, 'created_at', 90),
+                usage: dailyUsageSeries(memberUsage, 90)
             };
 
             // ── Daily visitors (today) ──
@@ -413,7 +429,7 @@ try {
                 }
             });
             const dailyVisitors = Array.from(visitorMap.entries())
-                .filter(([userId]) => memberIds.has(userId))
+                .filter(([userId]) => !adminIds.has(userId))
                 .map(([userId, info]) => {
                     const userRow = rows.find(r => r.id === userId);
                     return {
@@ -440,12 +456,12 @@ try {
             const usersPrev7d = countSince(memberRows, 14) - users7d;
             const users30d = countSince(memberRows, 30);
             const usersPrev30d = countSince(memberRows, 60) - users30d;
-            const modules7d = countSince(modules, 7);
-            const modulesPrev7d = countSince(modules, 14) - modules7d;
-            const messages7d = countSince(chat, 7);
-            const messagesPrev7d = countSince(chat, 14) - messages7d;
-            const usage7d = usageSince(usage || [], 7);
-            const usagePrev7d = usageSince(usage || [], 14) - usage7d;
+            const modules7d = countSince(memberModules, 7);
+            const modulesPrev7d = countSince(memberModules, 14) - modules7d;
+            const messages7d = countSince(memberChat, 7);
+            const messagesPrev7d = countSince(memberChat, 14) - messages7d;
+            const usage7d = usageSince(memberUsage, 7);
+            const usagePrev7d = usageSince(memberUsage, 14) - usage7d;
 
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({
@@ -457,13 +473,13 @@ try {
                 aiCallsToday: chatCallsToday + visionCallsToday,
                 aiChatCallsToday: chatCallsToday,
                 aiVisionCallsToday: visionCallsToday,
-                aiUsersToday: [...aiByUser.keys()].filter(id => memberIds.has(id)).length,
+                aiUsersToday: memberAi.size,
                 aiAtLimitCount: memberRows.filter(r => r.ai_at_limit).length,
                 aiLimits: aiLimits,
                 adminCount: rows.filter(r => r.role === 'admin').length,
-                totalModules: modules.length,
-                totalChatMessages: chat.length,
-                totalAchievements: unlocks.length,
+                totalModules: memberModules.length,
+                totalChatMessages: memberChat.length,
+                totalAchievements: memberUnlocks.length,
                 totalTimeSeconds,
                 avgSecondsPerActiveUser: engagedCount ? Math.round(totalTimeSeconds / engagedCount) : 0,
                 overallAverage,
@@ -472,7 +488,7 @@ try {
                 topModules,
                 achievementBreakdown,
                 averageMarkByYear,
-                avgMessagesPerActiveUser: engagedCount ? +(chat.length / engagedCount).toFixed(1) : 0,
+                avgMessagesPerActiveUser: engagedCount ? +(memberChat.length / engagedCount).toFixed(1) : 0,
                 dailyVisitors,
                 dailyVisitorCount: dailyVisitors.length,
                 signupsByDay: series.signups.slice(-30),
