@@ -329,3 +329,7 @@ async function bumpDailyUsage(base, serviceRole, userId, kind) {
         return null;
     }
 }
+
+export const config = {
+    maxDuration: 60
+};

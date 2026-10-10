@@ -33,6 +33,49 @@ Part and Semester hierarchy:
 
 If you cannot find any modules, return an empty array [].`;
 
+/* ── AI extraction quota lock ──
+   Extractions run on the vision quota, which is separate from chat. When the
+   server reports it is spent, keep the Extract button disabled instead of
+   letting the user re-upload and fire requests that can only fail. Day locks
+   persist for the current UTC day; per-minute burst locks clear after 60s. */
+const VISION_LOCK_KEY = 'ai_vision_lock';
+const VISION_LOCK_DAY_MESSAGE = "You've reached today's AI extraction limit. It resets tomorrow.";
+let visionLocked = false;
+let visionUnlockTimer = null;
+
+function visionUtcDay() {
+    return new Date().toISOString().slice(0, 10);
+}
+
+function visionLockStorageKey() {
+    return (window.GradelyticsDB && typeof GradelyticsDB.getCacheKey === 'function')
+        ? GradelyticsDB.getCacheKey(VISION_LOCK_KEY)
+        : VISION_LOCK_KEY;
+}
+
+function restoreVisionQuotaLock() {
+    let stored = null;
+    try { stored = localStorage.getItem(visionLockStorageKey()); } catch (e) { stored = null; }
+    if (!stored) return;
+    if (stored === visionUtcDay()) {
+        visionLocked = true;
+    } else {
+        try { localStorage.removeItem(visionLockStorageKey()); } catch (e) { /* ignore */ }
+    }
+}
+
+function applyVisionQuotaLock(err) {
+    if (!err || !err.isQuota) return;
+    if (err.quotaScope === 'day') {
+        try { localStorage.setItem(visionLockStorageKey(), visionUtcDay()); } catch (e) { /* ignore */ }
+        visionLocked = true;
+        return;
+    }
+    if (visionUnlockTimer) clearTimeout(visionUnlockTimer);
+    visionLocked = true;
+    visionUnlockTimer = setTimeout(function () { visionLocked = false; }, 60000);
+}
+
 function handleScreenshot(file) {
     if (typeof GradelyticsDB !== 'undefined' && !GradelyticsDB.requireAuth('Sign in to upload a screenshot for AI extraction.')) {
         return;
@@ -62,9 +105,13 @@ function handleScreenshot(file) {
         const status = document.getElementById('extract-status');
         if (img) img.src = screenshotBase64;
         if (preview) preview.style.display = 'block';
-        if (extractBtn) extractBtn.disabled = false;
+        restoreVisionQuotaLock();
+        if (extractBtn) extractBtn.disabled = visionLocked;
         if (dropzone) dropzone.style.display = 'none';
-        if (status) { stopStatusLoader(); status.textContent = ''; }
+        if (status) {
+            stopStatusLoader();
+            status.textContent = visionLocked ? VISION_LOCK_DAY_MESSAGE : '';
+        }
     };
     reader.readAsDataURL(file);
 }
@@ -118,6 +165,10 @@ function removeScreenshot() {
 
 async function extractFromScreenshot() {
     if (!screenshotBase64) return;
+    if (visionLocked) {
+        showToast(VISION_LOCK_DAY_MESSAGE, 'error');
+        return;
+    }
     if (typeof GradelyticsDB !== 'undefined' && !GradelyticsDB.requireAuth('Sign in to let AI extract your results from a screenshot.')) {
         return;
     }
@@ -230,12 +281,15 @@ async function extractFromScreenshot() {
         const status = document.getElementById('extract-status');
         if (status) status.textContent = '';
         showToast(aiFailureMessage(error), 'error');
-        extractBtn.disabled = false;
+        applyVisionQuotaLock(error);
+        extractBtn.disabled = visionLocked;
         extractBtn.innerHTML = 'Extract Results';
     }
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+    restoreVisionQuotaLock();
+
     const dropzone = document.querySelector('.screenshot-dropzone');
     if (dropzone) {
         dropzone.addEventListener('click', function (e) {

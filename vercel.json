@@ -1,7 +1,8 @@
 {
     "functions": {
         "server.js": {
-            "includeFiles": "**/*"
+            "includeFiles": "**/*",
+            "maxDuration": 60
         }
     }
 }
