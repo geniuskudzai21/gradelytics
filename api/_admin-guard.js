@@ -57,6 +57,20 @@ export async function authorizeAdmin(req) {
     return { ok: true, actor: { kind: 'admin', userId: user.id }, serviceRole, supabaseUrl };
 }
 
+/* The owner account(s) live in the ADMIN_EMAILS env allowlist (comma-separated),
+   alongside the master ADMIN_PASSWORD. They are admins regardless of their
+   profiles.role, and cannot be demoted or deleted from the console. */
+export function getAdminEmails() {
+    return (process.env.ADMIN_EMAILS || '')
+        .split(',')
+        .map(e => e.trim().toLowerCase())
+        .filter(Boolean);
+}
+
+export function isOwnerEmail(email) {
+    return !!email && getAdminEmails().includes(String(email).trim().toLowerCase());
+}
+
 export function serviceHeaders(serviceRole) {
     return {
         'apikey': serviceRole,

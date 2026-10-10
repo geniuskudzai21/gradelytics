@@ -644,7 +644,7 @@
             tr.style.cursor = 'pointer';
             tr.addEventListener('click', () => openUserDetail(u.id));
             tr.innerHTML =
-                '<td class="cell-email">' + escapeHtml(u.email || '—') + '</td>' +
+                '<td class="cell-email">' + escapeHtml(u.email || '—') + adminBadge(u) + '</td>' +
                 '<td>' + formatDate(u.created_at) + '</td>' +
                 '<td>' + u.modules + '</td>' +
                 '<td>' + u.chat_messages + '</td>' +
@@ -703,8 +703,9 @@
 
         filtered.forEach(u => {
             const tr = document.createElement('tr');
+            if (u.role === 'admin') tr.classList.add('row--admin');
             tr.innerHTML =
-                '<td class="cell-email">' + escapeHtml(u.email || '—') + '</td>' +
+                '<td class="cell-email">' + escapeHtml(u.email || '—') + adminBadge(u) + '</td>' +
                 '<td>' + formatDate(u.created_at) + '</td>' +
                 '<td>' + u.modules + '</td>' +
                 '<td>' + u.chat_messages + '</td>' +
@@ -714,7 +715,7 @@
                 '<td><div class="row-actions">' +
                 '<button class="action-btn" data-action="view" data-id="' + u.id + '" title="View"><i class="bx bx-show"></i></button>' +
                 '<button class="action-btn" data-action="edit" data-id="' + u.id + '" title="Edit"><i class="bx bx-pencil"></i></button>' +
-                '<button class="action-btn action-btn--danger" data-action="delete" data-id="' + u.id + '" title="Delete"><i class="bx bx-trash"></i></button>' +
+                userDeleteButton(u) +
                 '</div></td>';
             tbody.appendChild(tr);
         });
@@ -728,6 +729,22 @@
             return '<span class="badge">Offline</span>';
         }
         return '<span class="badge">Never used</span>';
+    }
+
+    // Admin accounts (the env allowlist owner plus anyone promoted from the
+    // console) are not students — flag them so they never look like a regular
+    // user, and shield the owner from accidental deletion.
+    function adminBadge(u) {
+        if (!u || u.role !== 'admin') return '';
+        const label = u.is_owner ? 'Owner account' : 'Admin account';
+        return ' <span class="badge badge--admin" title="' + label + '"><i class="bx bx-shield-quarter"></i> Admin</span>';
+    }
+
+    function userDeleteButton(u) {
+        if (u && u.is_owner) {
+            return '<button class="action-btn action-btn--danger" disabled title="The owner account cannot be deleted"><i class="bx bx-trash"></i></button>';
+        }
+        return '<button class="action-btn action-btn--danger" data-action="delete" data-id="' + u.id + '" title="Delete"><i class="bx bx-trash"></i></button>';
     }
 
     // Chat / vision usage against today's cap, so you can see who is about to
@@ -758,6 +775,13 @@
             const name = u.display_name || (u.email || 'User');
             setText('detail-name', name);
             setText('detail-email', u.email || 'No email');
+            const roleEl = document.getElementById('detail-role');
+            if (roleEl) roleEl.innerHTML = adminBadge(u);
+            const deleteBtn = document.getElementById('detail-delete');
+            if (deleteBtn) {
+                deleteBtn.style.display = u.is_owner ? 'none' : '';
+                deleteBtn.disabled = !!u.is_owner;
+            }
             setText('detail-stat-modules', data.modules.length);
             setText('detail-stat-chat', data.chat.length);
             setText('detail-stat-average', average(data.modules));

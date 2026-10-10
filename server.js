@@ -256,7 +256,10 @@ try {
                 fetchJson(`${base}/rest/v1/profiles?select=id,role`, headers).catch(() => [])
             ]);
 
-            // ── Admin roles (promoted from the console) ──
+            // ── Admin roles ──
+            // Two sources of truth: the ADMIN_EMAILS env allowlist (the owner)
+            // and profiles.role = 'admin' (promoted from the console).
+            const adminEmails = getAdminEmails();
             const roleByUser = new Map();
             (profiles || []).forEach(p => roleByUser.set(p.id, p.role === 'admin' ? 'admin' : 'user'));
 
@@ -310,6 +313,8 @@ try {
                 const lastSeen = lastSeenByUser.get(u.id) || 0;
                 const engaged = m > 0 || c > 0 || a > 0 || (usageByUser.get(u.id) || 0) > 0;
                 const ai = aiByUser.get(u.id) || { chat: 0, vision: 0 };
+                const isOwner = adminEmails.includes((u.email || '').toLowerCase());
+                const role = isOwner || roleByUser.get(u.id) === 'admin' ? 'admin' : 'user';
                 return {
                     id: u.id,
                     email: u.email || '(no email)',
@@ -327,12 +332,19 @@ try {
                     ai_chat_remaining: Math.max(0, aiLimits.chat - ai.chat),
                     ai_vision_remaining: Math.max(0, aiLimits.vision - ai.vision),
                     ai_at_limit: ai.chat >= aiLimits.chat || ai.vision >= aiLimits.vision,
-                    role: roleByUser.get(u.id) || 'user'
+                    is_owner: isOwner,
+                    role: role
                 };
             });
 
-            const activeCount = rows.filter(r => r.active).length;
-            const engagedCount = rows.filter(r => r.engaged).length;
+            // Admins (the owner plus promoted admins) are not students, so keep
+            // them out of the user-facing metrics — totals, active counts and
+            // signup trends describe real users only. They stay in the list.
+            const memberRows = rows.filter(r => r.role !== 'admin');
+            const memberIds = new Set(memberRows.map(r => r.id));
+
+            const activeCount = memberRows.filter(r => r.active).length;
+            const engagedCount = memberRows.filter(r => r.engaged).length;
 
             // ── Performance & engagement ──
             const marks = modules.filter(m => m.mark != null && Number(m.mark) >= 0).map(m => Number(m.mark));
@@ -381,7 +393,7 @@ try {
 
             // ── Time series (90 days) for signups, modules added, messages and usage ──
             const series = {
-                signups: dailySeries(rows, 'created_at', 90),
+                signups: dailySeries(memberRows, 'created_at', 90),
                 modules: dailySeries(modules, 'created_at', 90),
                 messages: dailySeries(chat, 'created_at', 90),
                 usage: dailyUsageSeries(usage || [], 90)
@@ -400,15 +412,17 @@ try {
                     visitorMap.set(u.user_id, { lastVisitMs: t, started_at: u.started_at });
                 }
             });
-            const dailyVisitors = Array.from(visitorMap.entries()).map(([userId, info]) => {
-                const userRow = rows.find(r => r.id === userId);
-                return {
-                    user_id: userId,
-                    email: userRow ? userRow.email : '(unknown)',
-                    display_name: userRow ? userRow.display_name : null,
-                    last_visit: info.started_at
-                };
-            }).sort((a, b) => new Date(b.last_visit) - new Date(a.last_visit));
+            const dailyVisitors = Array.from(visitorMap.entries())
+                .filter(([userId]) => memberIds.has(userId))
+                .map(([userId, info]) => {
+                    const userRow = rows.find(r => r.id === userId);
+                    return {
+                        user_id: userId,
+                        email: userRow ? userRow.email : '(unknown)',
+                        display_name: userRow ? userRow.display_name : null,
+                        last_visit: info.started_at
+                    };
+                }).sort((a, b) => new Date(b.last_visit) - new Date(a.last_visit));
 
             // ── Trend deltas (last 7d vs previous 7d, last 30d vs previous 30d) ──
             const now = Date.now();
@@ -422,10 +436,10 @@ try {
             }).reduce((s, r) => s + (Number(r.duration_seconds) || 0), 0);
             const delta = (cur, prev) => prev > 0 ? Math.round(((cur - prev) / prev) * 100) : (cur > 0 ? 100 : 0);
 
-            const users7d = countSince(rows, 7);
-            const usersPrev7d = countSince(rows, 14) - users7d;
-            const users30d = countSince(rows, 30);
-            const usersPrev30d = countSince(rows, 60) - users30d;
+            const users7d = countSince(memberRows, 7);
+            const usersPrev7d = countSince(memberRows, 14) - users7d;
+            const users30d = countSince(memberRows, 30);
+            const usersPrev30d = countSince(memberRows, 60) - users30d;
             const modules7d = countSince(modules, 7);
             const modulesPrev7d = countSince(modules, 14) - modules7d;
             const messages7d = countSince(chat, 7);
@@ -435,16 +449,16 @@ try {
 
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({
-                totalUsers: rows.length,
+                totalUsers: memberRows.length,
                 activeUsers: activeCount,
-                activeUserPct: rows.length ? Math.round((activeCount / rows.length) * 100) : 0,
+                activeUserPct: memberRows.length ? Math.round((activeCount / memberRows.length) * 100) : 0,
                 engagedUsers: engagedCount,
-                engagedUserPct: rows.length ? Math.round((engagedCount / rows.length) * 100) : 0,
+                engagedUserPct: memberRows.length ? Math.round((engagedCount / memberRows.length) * 100) : 0,
                 aiCallsToday: chatCallsToday + visionCallsToday,
                 aiChatCallsToday: chatCallsToday,
                 aiVisionCallsToday: visionCallsToday,
-                aiUsersToday: aiByUser.size,
-                aiAtLimitCount: rows.filter(r => r.ai_at_limit).length,
+                aiUsersToday: [...aiByUser.keys()].filter(id => memberIds.has(id)).length,
+                aiAtLimitCount: memberRows.filter(r => r.ai_at_limit).length,
                 aiLimits: aiLimits,
                 adminCount: rows.filter(r => r.role === 'admin').length,
                 totalModules: modules.length,
@@ -524,6 +538,7 @@ try {
 
                 const timeSpentSeconds = (usage || []).reduce((s, u) => s + (Number(u.duration_seconds) || 0), 0);
 
+                const isOwner = isOwnerEmail(user.email);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 return res.end(JSON.stringify({
                     user: {
@@ -533,7 +548,8 @@ try {
                         created_at: user.created_at || user.createdAt || null,
                         last_sign_in_at: user.last_sign_in_at || user.lastSignInAt || null,
                         phone: user.phone || null,
-                        role: profile ? profile.role : 'user',
+                        role: isOwner || (profile && profile.role === 'admin') ? 'admin' : 'user',
+                        is_owner: isOwner,
                         time_spent_seconds: timeSpentSeconds
                     },
                     modules,
@@ -564,6 +580,12 @@ try {
                     if (auth.actor.kind !== 'owner' && auth.actor.userId === id) {
                         res.writeHead(403, { 'Content-Type': 'application/json' });
                         return res.end(JSON.stringify({ error: 'You cannot change your own admin role.' }));
+                    }
+                    const targetRes = await fetch(`${base}/auth/v1/admin/users/${id}`, { headers });
+                    const targetEmail = targetRes.ok ? ((await targetRes.json()).email || '') : '';
+                    if (isOwnerEmail(targetEmail)) {
+                        res.writeHead(403, { 'Content-Type': 'application/json' });
+                        return res.end(JSON.stringify({ error: "The owner account's role cannot be changed." }));
                     }
                     const roleErr = await setUserRole(base, headers, id, role);
                     if (roleErr) {
@@ -616,6 +638,16 @@ try {
                 if (!id) {
                     res.writeHead(400, { 'Content-Type': 'application/json' });
                     return res.end(JSON.stringify({ error: 'Missing user id.' }));
+                }
+                if (auth.actor.kind !== 'owner' && auth.actor.userId === id) {
+                    res.writeHead(403, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ error: 'You cannot delete your own account.' }));
+                }
+                const targetRes = await fetch(`${base}/auth/v1/admin/users/${id}`, { headers });
+                const targetEmail = targetRes.ok ? ((await targetRes.json()).email || '') : '';
+                if (isOwnerEmail(targetEmail)) {
+                    res.writeHead(403, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ error: 'The owner account cannot be deleted.' }));
                 }
                 const delRes = await fetch(`${base}/auth/v1/admin/users/${id}`, { method: 'DELETE', headers });
                 if (!delRes.ok && delRes.status !== 404) {
@@ -958,6 +990,20 @@ function safeEqual(a, b) {
    token whose profiles.role = 'admin' (someone promoted from the console).
    Returns { ok: false, status, error } or { ok: true, actor, base, headers }.
    ───────────────────────────────────────────────────────────────────────────── */
+
+/* The owner account(s) live in the ADMIN_EMAILS env allowlist (comma-separated),
+   alongside the master ADMIN_PASSWORD. They are admins regardless of their
+   profiles.role, and cannot be demoted or deleted from the console. */
+function getAdminEmails() {
+    return (process.env.ADMIN_EMAILS || '')
+        .split(',')
+        .map(e => e.trim().toLowerCase())
+        .filter(Boolean);
+}
+
+function isOwnerEmail(email) {
+    return !!email && getAdminEmails().includes(String(email).trim().toLowerCase());
+}
 
 async function authorizeAdmin(req) {
     const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;

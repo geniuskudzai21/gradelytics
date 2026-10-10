@@ -1,4 +1,4 @@
-import { authorizeAdmin, serviceHeaders } from './_admin-guard.js';
+import { authorizeAdmin, serviceHeaders, getAdminEmails } from './_admin-guard.js';
 
 // A user counts as active while they are actually using the app. The client
 // flushes a usage chunk roughly every 60s, so the window has to be wider than
@@ -34,7 +34,11 @@ export default async function handler(req, res) {
             fetchRows(`${base}/rest/v1/profiles?select=id,role`, headers)
         ]);
 
-        // ── Admin roles (promoted from this console) ──
+        // ── Admin roles ──
+        // Two sources of truth: the ADMIN_EMAILS env allowlist (the owner) and
+        // profiles.role = 'admin' (promoted from this console). Either marks the
+        // account as an admin so the dashboard can treat it specially.
+        const adminEmails = getAdminEmails();
         const roleByUser = new Map();
         (profiles || []).forEach(p => roleByUser.set(p.id, p.role === 'admin' ? 'admin' : 'user'));
 
@@ -88,6 +92,8 @@ export default async function handler(req, res) {
             const lastSeen = lastSeenByUser.get(u.id) || 0;
             const engaged = m > 0 || c > 0 || a > 0 || (usageByUser.get(u.id) || 0) > 0;
             const ai = aiByUser.get(u.id) || { chat: 0, vision: 0 };
+            const isOwner = adminEmails.includes((u.email || '').toLowerCase());
+            const role = isOwner || roleByUser.get(u.id) === 'admin' ? 'admin' : 'user';
             return {
                 id: u.id,
                 email: u.email || '(no email)',
@@ -105,12 +111,19 @@ export default async function handler(req, res) {
                 ai_chat_remaining: Math.max(0, aiLimits.chat - ai.chat),
                 ai_vision_remaining: Math.max(0, aiLimits.vision - ai.vision),
                 ai_at_limit: ai.chat >= aiLimits.chat || ai.vision >= aiLimits.vision,
-                role: roleByUser.get(u.id) || 'user'
+                is_owner: isOwner,
+                role: role
             };
         });
 
-        const activeCount = rows.filter(r => r.active).length;
-        const engagedCount = rows.filter(r => r.engaged).length;
+        // Admins (the owner plus promoted admins) are not students, so keep them
+        // out of the user-facing metrics — totals, active counts and signup
+        // trends describe real users only. They stay in the users list itself.
+        const memberRows = rows.filter(r => r.role !== 'admin');
+        const memberIds = new Set(memberRows.map(r => r.id));
+
+        const activeCount = memberRows.filter(r => r.active).length;
+        const engagedCount = memberRows.filter(r => r.engaged).length;
 
         // ── Performance & engagement ──
         const marks = modules.filter(m => m.mark != null && Number(m.mark) >= 0).map(m => Number(m.mark));
@@ -159,7 +172,7 @@ export default async function handler(req, res) {
 
         // ── Time series (90 days) for signups, modules added, messages, usage ──
         const series = {
-            signups: dailySeries(rows, 'created_at', 90),
+            signups: dailySeries(memberRows, 'created_at', 90),
             modules: dailySeries(modules, 'created_at', 90),
             messages: dailySeries(chat, 'created_at', 90),
             usage: dailyUsageSeries(usage || [], 90)
@@ -177,10 +190,10 @@ export default async function handler(req, res) {
         }).reduce((s, r) => s + (Number(r.duration_seconds) || 0), 0);
         const delta = (cur, prev) => prev > 0 ? Math.round(((cur - prev) / prev) * 100) : (cur > 0 ? 100 : 0);
 
-        const users7d = countSince(rows, 7);
-        const usersPrev7d = countSince(rows, 14) - users7d;
-        const users30d = countSince(rows, 30);
-        const usersPrev30d = countSince(rows, 60) - users30d;
+        const users7d = countSince(memberRows, 7);
+        const usersPrev7d = countSince(memberRows, 14) - users7d;
+        const users30d = countSince(memberRows, 30);
+        const usersPrev30d = countSince(memberRows, 60) - users30d;
         const modules7d = countSince(modules, 7);
         const modulesPrev7d = countSince(modules, 14) - modules7d;
         const messages7d = countSince(chat, 7);
@@ -189,16 +202,16 @@ export default async function handler(req, res) {
         const usagePrev7d = usageSince(usage || [], 14) - usage7d;
 
         res.status(200).json({
-            totalUsers: rows.length,
+            totalUsers: memberRows.length,
             activeUsers: activeCount,
-            activeUserPct: rows.length ? Math.round((activeCount / rows.length) * 100) : 0,
+            activeUserPct: memberRows.length ? Math.round((activeCount / memberRows.length) * 100) : 0,
             engagedUsers: engagedCount,
-            engagedUserPct: rows.length ? Math.round((engagedCount / rows.length) * 100) : 0,
+            engagedUserPct: memberRows.length ? Math.round((engagedCount / memberRows.length) * 100) : 0,
             aiCallsToday: chatCallsToday + visionCallsToday,
             aiChatCallsToday: chatCallsToday,
             aiVisionCallsToday: visionCallsToday,
-            aiUsersToday: aiByUser.size,
-            aiAtLimitCount: rows.filter(r => r.ai_at_limit).length,
+            aiUsersToday: [...aiByUser.keys()].filter(id => memberIds.has(id)).length,
+            aiAtLimitCount: memberRows.filter(r => r.ai_at_limit).length,
             aiLimits: aiLimits,
             adminCount: rows.filter(r => r.role === 'admin').length,
             totalModules: modules.length,

@@ -527,6 +527,24 @@ button {
     border-color: transparent;
 }
 
+.badge--admin {
+    color: #a855f7;
+    background: rgba(168, 85, 247, 0.14);
+    border-color: transparent;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    vertical-align: middle;
+}
+
+.badge--admin i {
+    font-size: 12px;
+}
+
+.row--admin td:first-child {
+    box-shadow: inset 3px 0 0 #a855f7;
+}
+
 /* ── User detail ── */
 
 .detail-title {

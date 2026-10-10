@@ -1,4 +1,4 @@
-import { authorizeAdmin, serviceHeaders } from './_admin-guard.js';
+import { authorizeAdmin, serviceHeaders, isOwnerEmail } from './_admin-guard.js';
 
 export default async function handler(req, res) {
     if (req.method !== 'GET' && req.method !== 'PUT' && req.method !== 'DELETE') {
@@ -34,6 +34,7 @@ export default async function handler(req, res) {
 
             const timeSpentSeconds = (usage || []).reduce((s, u) => s + (Number(u.duration_seconds) || 0), 0);
 
+            const isOwner = isOwnerEmail(user.email);
             return res.status(200).json({
                 user: {
                     id: user.id,
@@ -42,7 +43,8 @@ export default async function handler(req, res) {
                     created_at: user.created_at || user.createdAt || null,
                     last_sign_in_at: user.last_sign_in_at || user.lastSignInAt || null,
                     phone: user.phone || null,
-                    role: profile && profile.length ? profile[0].role : 'user',
+                    role: isOwner || (profile && profile.length && profile[0].role === 'admin') ? 'admin' : 'user',
+                    is_owner: isOwner,
                     time_spent_seconds: timeSpentSeconds
                 },
                 modules,
@@ -61,6 +63,11 @@ export default async function handler(req, res) {
                 const role = body.role === 'admin' ? 'admin' : 'user';
                 if (auth.actor.kind !== 'owner' && auth.actor.userId === id) {
                     return res.status(403).json({ error: 'You cannot change your own admin role.' });
+                }
+                const targetRes = await fetch(`${base}/auth/v1/admin/users/${id}`, { headers });
+                const targetEmail = targetRes.ok ? ((await targetRes.json()).email || '') : '';
+                if (isOwnerEmail(targetEmail)) {
+                    return res.status(403).json({ error: "The owner account's role cannot be changed." });
                 }
                 const roleErr = await setRole(base, headers, id, role);
                 if (roleErr) return res.status(500).json({ error: roleErr });
@@ -102,6 +109,15 @@ export default async function handler(req, res) {
 
         if (req.method === 'DELETE') {
             if (!id) return res.status(400).json({ error: 'Missing user id.' });
+
+            if (auth.actor.kind !== 'owner' && auth.actor.userId === id) {
+                return res.status(403).json({ error: 'You cannot delete your own account.' });
+            }
+            const targetRes = await fetch(`${base}/auth/v1/admin/users/${id}`, { headers });
+            const targetEmail = targetRes.ok ? ((await targetRes.json()).email || '') : '';
+            if (isOwnerEmail(targetEmail)) {
+                return res.status(403).json({ error: 'The owner account cannot be deleted.' });
+            }
 
             const delRes = await fetch(`${base}/auth/v1/admin/users/${id}`, { method: 'DELETE', headers });
             if (!delRes.ok && delRes.status !== 404) {
